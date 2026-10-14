@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Wav Lab | Admin</title>
+    <meta name="theme-color" content="#0b0b0d">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24"><path d="M3 18v-6h2v6H3zm4 2V4h2v16H7zm4-4V8h2v8h-2zm4 2v-10h2v10h-2zm4-4v-4h2v4h-2z"/></svg>
+            </div>
+            <h1 class="brand-name">WAV.<span>LAB</span></h1>
+        </div>
+        <div class="head-right">
+            <span class="beta-badge">ADMIN</span>
+            <button class="btn ghost small" id="logoutBtn" hidden>Sair</button>
+        </div>
+    </header>
+
+    <main class="admin-main">
+
+        <!-- LOGIN -->
+        <section id="loginView" hidden>
+            <h2 class="hero-title">Entrar</h2>
+            <p class="hero-sub">Área restrita para quem cadastra os beats.</p>
+            <form id="loginForm" class="panel">
+                <div class="field">
+                    <label for="loginEmail">E-mail</label>
+                    <input type="email" id="loginEmail" autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <label for="loginPass">Senha</label>
+                    <input type="password" id="loginPass" autocomplete="current-password" required>
+                </div>
+                <button class="btn primary block" type="submit" id="loginBtn">Entrar</button>
+            </form>
+        </section>
+
+        <!-- APP -->
+        <section id="appView" hidden>
+            <nav class="tabs">
+                <button class="tab active" data-tab="beats">Beats</button>
+                <button class="tab" data-tab="producers">Produtores</button>
+                <button class="tab" data-tab="orders">Pedidos</button>
+            </nav>
+
+            <div id="tab-beats" class="tab-pane">
+                <button class="btn primary block" data-act="new-beat"><i class="fa-solid fa-plus"></i> Novo beat</button>
+                <div id="beatsAdminList" class="admin-list"></div>
+            </div>
+
+            <div id="tab-producers" class="tab-pane" hidden>
+                <button class="btn primary block" data-act="new-producer"><i class="fa-solid fa-plus"></i> Novo produtor</button>
+                <div id="producersAdminList" class="admin-list"></div>
+            </div>
+
+            <div id="tab-orders" class="tab-pane" hidden>
+                <p class="hint">Cada toque em "Finalizar via WhatsApp" na vitrine aparece aqui como <b>lead</b>. Atualize o status quando o Pix cair.</p>
+                <div id="ordersAdminList" class="admin-list"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL: BEAT -->
+    <div id="beatModal" class="modal-overlay">
+        <form class="modal-content wide" id="beatForm">
+            <div class="modal-header">
+                <h3 class="modal-title" id="beatModalTitle">Novo beat</h3>
+                <button type="button" class="close-modal" data-close>&times;</button>
+            </div>
+
+            <div class="field"><label for="bf_title">Nome do beat *</label><input id="bf_title" required maxlength="60"></div>
+
+            <div class="row2">
+                <div class="field"><label for="bf_producer">Produtor *</label><select id="bf_producer" required></select></div>
+                <div class="field"><label for="bf_genre">Gênero *</label><select id="bf_genre" required></select></div>
+            </div>
+
+            <div class="row2">
+                <div class="field"><label for="bf_bpm">BPM</label><input id="bf_bpm" type="number" inputmode="numeric" min="40" max="260"></div>
+                <div class="field"><label for="bf_key">Tom</label><input id="bf_key" placeholder="ex.: F minor" maxlength="20"></div>
+            </div>
+
+            <div class="field"><label for="bf_tags">Tags (separadas por vírgula)</label><input id="bf_tags" placeholder="dark, melódico, pista"></div>
+            <div class="field"><label for="bf_note">Nota do autor</label><textarea id="bf_note" rows="3" maxlength="400"></textarea></div>
+
+            <div class="group-title">Vitrine (público)</div>
+            <div class="field">
+                <label for="bf_cover">Capa (imagem quadrada)</label>
+                <input id="bf_cover" type="file" accept="image/*">
+                <div class="hint" id="bf_cover_cur"></div>
+            </div>
+            <div class="field">
+                <label for="bf_preview">Preview de 30s COM TAG (MP3) *</label>
+                <input id="bf_preview" type="file" accept="audio/*">
+                <div class="hint" id="bf_preview_hint"></div>
+            </div>
+
+            <div class="group-title">Arquivos master (privados, só depois do pagamento)</div>
+            <div class="field"><label for="bf_mp3">MP3 master</label><input id="bf_mp3" type="file" accept="audio/*"><div class="hint" id="bf_mp3_cur"></div></div>
+            <div class="field"><label for="bf_wav">WAV master</label><input id="bf_wav" type="file" accept="audio/*,.wav"><div class="hint" id="bf_wav_cur"></div></div>
+            <div class="field"><label for="bf_stems">Stems (.zip, até 50MB)</label><input id="bf_stems" type="file" accept=".zip,.rar,.7z,application/zip"><div class="hint" id="bf_stems_cur"></div></div>
+            <div class="field"><label for="bf_stemslink">ou link dos stems (Drive / Dropbox)</label><input id="bf_stemslink" type="url" placeholder="https://drive.google.com/..."></div>
+
+            <label class="check"><input type="checkbox" id="bf_published"> Publicar na vitrine</label>
+
+            <div class="status" id="bf_status"></div>
+            <button class="btn primary block" type="submit" id="bf_save">Salvar beat</button>
+        </form>
+    </div>
+
+    <!-- MODAL: PRODUTOR -->
+    <div id="producerModal" class="modal-overlay">
+        <form class="modal-content" id="producerForm">
+            <div class="modal-header">
+                <h3 class="modal-title" id="producerModalTitle">Novo produtor</h3>
+                <button type="button" class="close-modal" data-close>&times;</button>
+            </div>
+            <div class="field"><label for="pf_name">Nome artístico *</label><input id="pf_name" required maxlength="40"></div>
+            <div class="field"><label for="pf_handle">@ do Instagram</label><input id="pf_handle" placeholder="@seuuser" maxlength="40"></div>
+            <div class="field">
+                <label for="pf_photo">Foto (rosto, quadrada)</label>
+                <input id="pf_photo" type="file" accept="image/*">
+                <div class="hint" id="pf_photo_cur"></div>
+            </div>
+            <label class="check"><input type="checkbox" id="pf_active" checked> Ativo (aparece na vitrine)</label>
+            <div class="status" id="pf_status"></div>
+            <button class="btn primary block" type="submit" id="pf_save">Salvar produtor</button>
+        </form>
+    </div>
+
+    <!-- MODAL: ENTREGA -->
+    <div id="deliveryModal" class="modal-overlay">
+        <div class="modal-content wide">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="dl_title">Entrega</h3>
+                    <p class="modal-sub">Gera os links dos arquivos (valem 7 dias)</p>
+                </div>
+                <button type="button" class="close-modal" data-close>&times;</button>
+            </div>
+            <div class="field"><label for="dl_license">Licença comprada</label><select id="dl_license"></select></div>
+            <button class="btn primary block" type="button" id="dl_generate">Gerar links</button>
+            <div class="status" id="dl_status"></div>
+            <textarea id="dl_message" rows="9" readonly hidden></textarea>
+            <button class="btn ghost block" type="button" id="dl_copy" hidden><i class="fa-regular fa-copy"></i> Copiar mensagem</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
