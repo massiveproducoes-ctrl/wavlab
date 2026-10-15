@@ -80,7 +80,30 @@
                 <button type="button" class="close-modal" data-close>&times;</button>
             </div>
 
-            <div class="field"><label for="bf_title">Nome do beat *</label><input id="bf_title" required maxlength="60"></div>
+            <div class="field">
+                <label for="bf_title">Título do beat * <span class="lbl-note">(é o que o artista busca)</span></label>
+                <input id="bf_title" required maxlength="90" placeholder='Ex.: Drake Type Beat - "Midnight Vibes"'>
+                <div class="hint" id="bf_title_hint"></div>
+                <button type="button" class="btn small ghost" id="bf_title_use" hidden></button>
+            </div>
+
+            <div class="field">
+                <label for="bf_types">Type de (artistas de referência)</label>
+                <input id="bf_types" placeholder="Drake, Travis Scott" maxlength="120">
+                <div class="hint">Quem rodaria nesse beat? É assim que o artista pesquisa ("Drake type beat"). Use de 1 a 3, os mais fiéis ao som.</div>
+            </div>
+
+            <details class="seo-guide">
+                <summary>Como criar um título que vende</summary>
+                <ul>
+                    <li><b>Formato:</b> Artista Type Beat - "Nome do beat". Ex.: <i>Travis Scott Type Beat - "Midnight"</i></li>
+                    <li><b>Referência de verdade:</b> cite só quem o beat realmente lembra. Citar artista que não tem a ver derruba a confiança.</li>
+                    <li><b>1 ou 2 artistas</b> no título. Mais que isso parece spam.</li>
+                    <li><b>Até 70 caracteres.</b> Acima disso o título é cortado nas buscas.</li>
+                    <li><b>Escreva o nome do artista certo.</b> Erro de grafia = ninguém acha.</li>
+                    <li>Evite CAPS LOCK, emojis demais e promessas tipo "FREE" se o beat é pago.</li>
+                </ul>
+            </details>
 
             <div class="row2">
                 <div class="field"><label for="bf_producer">Produtor *</label><select id="bf_producer" required></select></div>

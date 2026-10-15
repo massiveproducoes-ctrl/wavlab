@@ -39,8 +39,20 @@
     </header>
 
     <main>
-        <h2 class="hero-title">Instrumentais</h2>
-        <p class="hero-sub">Previews de 30s. Licenciamento direto para seus lançamentos.</p>
+        <!-- Topo: slogan + busca (textos vem do config.js) -->
+        <section class="hero">
+            <h2 class="hero-title" id="heroTitle">Beats com identidade.</h2>
+            <p class="hero-sub" id="heroSub">Previews de 30s. Licencie direto e feche pelo WhatsApp.</p>
+
+            <form class="search" id="searchForm" role="search" autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="search" id="searchInput" placeholder="Ex.: Drake type beat, trap, sad" aria-label="Buscar beats" enterkeyhint="search" maxlength="60">
+                <button type="button" class="search-clear" id="searchClear" aria-label="Limpar busca" hidden>&times;</button>
+            </form>
+
+            <!-- Atalhos de busca (types e tags mais usados) -->
+            <div class="term-chips" id="termChips" hidden></div>
+        </section>
 
         <!-- Produtores: toque na foto para ver so os beats dele -->
         <section class="producers" id="producersWrap" hidden>
@@ -51,8 +63,18 @@
         <!-- Filtro por genero -->
         <div class="filters" id="genreFilters" hidden></div>
 
+        <!-- Contagem + modo de visualizacao -->
+        <div class="toolbar" id="toolbar" hidden>
+            <span class="result-count" id="resultCount"></span>
+            <div class="view-toggle" role="group" aria-label="Modo de visualização">
+                <button type="button" class="view-btn" data-view="grid" aria-label="Ver em grade"><i class="fa-solid fa-table-cells-large"></i></button>
+                <button type="button" class="view-btn" data-view="list" aria-label="Ver em lista"><i class="fa-solid fa-list"></i></button>
+            </div>
+        </div>
+
         <!-- Os beats sao desenhados pelo app.js a partir do banco de dados -->
-        <div class="beats-list" id="beatsList"></div>
+        <div class="beats-list is-grid" id="beatsList"></div>
+        <div class="sentinel" id="sentinel" hidden></div>
 
         <div class="creator-banner">
             <h4>É PRODUTOR MUSICAL?</h4>
@@ -84,10 +106,11 @@
             <div class="modal-header">
                 <div>
                     <h3 class="modal-title" id="modalBeatTitle">Licença</h3>
-                    <p class="modal-sub">Escolha o formato ideal</p>
+                    <p class="modal-sub" id="modalSub">Escolha o formato ideal</p>
                 </div>
                 <button class="close-modal" data-close-modal aria-label="Fechar">&times;</button>
             </div>
+            <p class="modal-note" id="modalNote" hidden></p>
             <div class="license-options" id="licenseOptions"></div>
             <ul class="license-notes" id="licenseNotes"></ul>
             <a id="whatsappCheckoutBtn" href="#" target="_blank" rel="noopener" class="checkout-btn">

@@ -11,6 +11,10 @@ window.WAVLAB = {
 
     PREVIEW_SECONDS: 30,
 
+    // Texto do topo da vitrine (o slogan ainda esta em definicao)
+    HERO_TITLE: 'Beats com identidade.',
+    HERO_SUB: 'Previews de 30s. Licencie direto e feche pelo WhatsApp.',
+
     // =====================================================================
     // LICENCAS - precos iguais para todos no beta.
     // ATENCAO: os limites de "terms" abaixo sao EXEMPLOS de mercado.

@@ -6,6 +6,7 @@
     var CFG = window.WAVLAB;
     var LICENSES = CFG.LICENSES;
     var PREVIEW_SECONDS = CFG.PREVIEW_SECONDS;
+    var BATCH = 24;                 // quantos beats entram a cada "rolagem"
     var BEATS = [];
     var db = null;
 
@@ -35,6 +36,16 @@
 
     function safeColor(c) { return /^#[0-9a-fA-F]{3,8}$/.test(c || '') ? c : '#ff5500'; }
 
+    // minusculo e sem acento (busca "melodico" acha "melódico")
+    function norm(s) {
+        s = String(s == null ? '' : s).toLowerCase();
+        try { s = s.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (e) { /* navegador antigo */ }
+        return s;
+    }
+
+    function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem storage, tudo bem */ } }
+
     function findBeat(id) {
         for (var i = 0; i < BEATS.length; i++) if (BEATS[i].id === id) return BEATS[i];
         return null;
@@ -56,24 +67,52 @@
 
     var minPrice = Math.min.apply(null, LICENSES.map(function (l) { return l.price; }));
 
+    // textos do topo vem do config.js
+    if (CFG.HERO_TITLE) $('heroTitle').textContent = CFG.HERO_TITLE;
+    if (CFG.HERO_SUB) $('heroSub').textContent = CFG.HERO_SUB;
+
+    // =========================================================
+    // ESTADO DA VITRINE
+    // =========================================================
+    var filter = { genre: null, producer: null, q: '' };
+    var view = lsGet('wavlab_view');
+    if (view !== 'grid' && view !== 'list') {
+        view = (window.matchMedia && window.matchMedia('(min-width: 768px)').matches) ? 'grid' : 'list';
+    }
+    var current = [];   // beats que passam na busca + filtros
+    var shown = 0;      // quantos ja foram desenhados (rolagem infinita)
+
     // =========================================================
     // DADOS (Supabase)
     // =========================================================
     function normalize(r) {
         var p = r.producers || {};
         var g = r.genres || {};
-        return {
+        var b = {
             id: r.id,
             title: r.title,
             bpm: r.bpm,
             key: r.musical_key,
             tags: r.tags || [],
+            types: r.type_artists || [],
             note: r.note,
             cover: r.cover_url,
             audio: r.preview_url,
             producer: { id: p.id || 'wavlab', name: p.name || 'Wav Lab', handle: p.handle, photo: p.photo_url },
             genre: { id: g.id || 'outro', name: g.name || 'Outro', color: safeColor(g.color), sort: g.sort == null ? 100 : g.sort }
         };
+        // campos prontos para a busca
+        b.titleN = norm(b.title);
+        b.typesN = norm(b.types.join(' '));
+        b.tagsN = norm(b.tags.join(' '));
+        b.hay = norm([b.title, b.producer.name, b.producer.handle, b.genre.name, b.tags.join(' '), b.types.join(' ')].join(' '));
+        return b;
+    }
+
+    var COLS = 'id,title,bpm,musical_key,tags,note,cover_url,preview_url,created_at,producers(id,name,handle,photo_url),genres(id,name,color,sort)';
+
+    function fetchBeats(cols) {
+        return db.from('beats').select(cols).eq('published', true).order('created_at', { ascending: false });
     }
 
     function loadBeats() {
@@ -81,40 +120,152 @@
         if (!window.supabase) { showError(); return; }
         if (!db) db = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY);
 
-        db.from('beats')
-            .select('id,title,bpm,musical_key,tags,note,cover_url,preview_url,created_at,producers(id,name,handle,photo_url),genres(id,name,color,sort)')
-            .eq('published', true)
-            .order('created_at', { ascending: false })
+        fetchBeats(COLS + ',type_artists')
+            .then(function (res) {
+                // se o banco ainda nao recebeu a migracao 02, a vitrine segue funcionando sem "type"
+                if (res.error && /type_artists/.test(res.error.message || '')) return fetchBeats(COLS);
+                return res;
+            })
             .then(function (res) {
                 if (res.error) throw res.error;
                 BEATS = (res.data || []).map(normalize);
+                renderControls();
                 renderBeats();
             })
             .catch(function () { showError(); });
     }
 
     // =========================================================
-    // RENDER
+    // BUSCA (titulo, type, tags, produtor, genero)
     // =========================================================
-    function showSkeleton() {
-        $('beatsList').innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+    var STOP = { type: 1, beat: 1, beats: 1, typebeat: 1, instrumental: 1, instrumentais: 1, tipo: 1 };
+
+    function tokens(q) {
+        var all = norm(q).split(/\s+/).filter(Boolean);
+        var useful = all.filter(function (t) { return !STOP[t]; });
+        return useful;     // "drake type beat" vira ["drake"]; so "type beat" vira [] (mostra tudo)
     }
 
-    function showError() {
-        $('beatsList').innerHTML =
-            '<div class="state-box"><strong>Não foi possível carregar os beats</strong>' +
-            'Confira sua conexão e tente de novo.<br><button data-retry>Tentar de novo</button></div>';
+    // -1 = nao bate; maior = mais relevante (type > titulo > tag > resto)
+    function score(b, toks) {
+        var s = 0;
+        for (var i = 0; i < toks.length; i++) {
+            var t = toks[i];
+            if (b.hay.indexOf(t) === -1) return -1;
+            s += b.typesN.indexOf(t) > -1 ? 3 : b.titleN.indexOf(t) > -1 ? 2 : b.tagsN.indexOf(t) > -1 ? 1 : 0.5;
+        }
+        return s;
     }
-
-    // ---------- filtros ----------
-    var filter = { genre: null, producer: null };
 
     function matchesFilter(b) {
         return (!filter.genre || b.genre.id === filter.genre) &&
                (!filter.producer || b.producer.id === filter.producer);
     }
 
-    function renderFilters() {
+    function computeList() {
+        var toks = tokens(filter.q), out = [];
+        BEATS.forEach(function (b, i) {
+            if (!matchesFilter(b)) return;
+            var s = toks.length ? score(b, toks) : 0;
+            if (s < 0) return;
+            out.push({ b: b, s: s, i: i });
+        });
+        if (toks.length) out.sort(function (a, c) { return (c.s - a.s) || (a.i - c.i); });
+        return out.map(function (x) { return x.b; });
+    }
+
+    function syncUrl() {
+        try {
+            var u = new URL(window.location.href);
+            if (filter.q) u.searchParams.set('q', filter.q); else u.searchParams.delete('q');
+            window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+        } catch (e) { /* sem URL, tudo bem */ }
+    }
+
+    function setQuery(v, fromInput) {
+        filter.q = String(v || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        if (!fromInput) $('searchInput').value = filter.q;
+        $('searchClear').hidden = !$('searchInput').value;
+        syncUrl();
+        renderBeats();
+        markTerms();
+    }
+
+    var searchTimer = null;
+    $('searchInput').addEventListener('input', function () {
+        var v = this.value;
+        $('searchClear').hidden = !v;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () { setQuery(v, true); }, 140);
+    });
+
+    $('searchForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearTimeout(searchTimer);
+        setQuery($('searchInput').value, true);
+        $('searchInput').blur();     // fecha o teclado no celular
+    });
+
+    $('searchClear').addEventListener('click', function () {
+        setQuery('');
+        $('searchInput').focus();
+    });
+
+    // =========================================================
+    // RENDER
+    // =========================================================
+    function showSkeleton() {
+        var box = $('beatsList');
+        box.className = 'beats-list is-' + view;
+        var n = view === 'grid' ? 10 : 6, html = '';
+        for (var i = 0; i < n; i++) html += '<div class="skeleton"></div>';
+        box.innerHTML = html;
+        $('sentinel').hidden = true;
+    }
+
+    function showError() {
+        $('toolbar').hidden = true;
+        $('sentinel').hidden = true;
+        $('beatsList').innerHTML =
+            '<div class="state-box"><strong>Não foi possível carregar os beats</strong>' +
+            'Confira sua conexão e tente de novo.<br><button data-retry>Tentar de novo</button></div>';
+    }
+
+    // chips de busca rapida: types (peso 2) e tags (peso 1) mais usados
+    function renderTerms() {
+        var map = {}, list = [], skip = {};
+        BEATS.forEach(function (b) { skip[norm(b.genre.name)] = 1; skip[norm(b.genre.id)] = 1; });
+
+        function add(label, w) {
+            var key = norm(label).trim();
+            if (!key || skip[key]) return;
+            if (!map[key]) { map[key] = { label: label, w: 0 }; list.push(map[key]); }
+            map[key].w += w;
+        }
+        BEATS.forEach(function (b) {
+            b.types.forEach(function (t) { add(t, 2); });
+            b.tags.forEach(function (t) { add(t, 1); });
+        });
+
+        if (list.length < 2) { $('termChips').hidden = true; return; }
+        list.sort(function (a, c) { return (c.w - a.w) || a.label.localeCompare(c.label); });
+        $('termChips').hidden = false;
+        $('termChips').innerHTML = list.slice(0, 12).map(function (x) {
+            return '<button type="button" class="chip chip-term" data-term="' + esc(x.label) + '">' + esc(x.label) + '</button>';
+        }).join('');
+        markTerms();
+    }
+
+    function markTerms() {
+        var chips = document.querySelectorAll('.chip-term');
+        var cur = norm(filter.q).trim();
+        for (var i = 0; i < chips.length; i++) {
+            chips[i].classList.toggle('active', !!cur && norm(chips[i].getAttribute('data-term')) === cur);
+        }
+    }
+
+    // genero + produtores
+    function renderControls() {
         var genres = {}, producers = {}, gList = [], pList = [];
 
         BEATS.forEach(function (b) {
@@ -153,59 +304,125 @@
                         esc(x.g.name) + ' <span>' + x.n + '</span></button>';
                 }).join('');
         }
+
+        renderTerms();
+    }
+
+    function cardHTML(b) {
+        var info = [];
+        if (b.bpm) info.push(esc(b.bpm) + ' BPM');
+        if (b.key) info.push(esc(b.key));
+        var infoTxt = info.join(' &middot; ');
+        var avatar = (b.producer.photo ? '<img src="' + esc(b.producer.photo) + '" alt="" loading="lazy">' : esc(initials(b.producer.name)));
+        var cover =
+            '<div class="bcover" style="--g:' + b.genre.color + '">' + coverHTML(b) +
+                '<button class="play-btn" data-play="' + esc(b.id) + '" aria-label="Ouvir ' + esc(b.title) + '"><i class="fa-solid fa-play"></i></button>' +
+            '</div>';
+        var pill = '<span class="genre-pill" style="--g:' + b.genre.color + '">' + esc(b.genre.name) + '</span>';
+
+        if (view === 'list') {
+            var tags = b.types.concat(b.tags).slice(0, 3).map(function (t) {
+                return '<button type="button" class="beat-tag" data-term="' + esc(t) + '">' + esc(t) + '</button>';
+            }).join('');
+            return '' +
+            '<article class="brow" data-card="' + esc(b.id) + '">' +
+                cover +
+                '<div class="brow-main">' +
+                    '<h3 class="btitle" title="' + esc(b.title) + '">' + esc(b.title) + '</h3>' +
+                    '<div class="bmeta">' + pill +
+                        '<span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span>' +
+                        (infoTxt ? '<span class="binfo">' + infoTxt + '</span>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div class="brow-tags">' + tags + '</div>' +
+                '<button class="buy-btn" data-buy="' + esc(b.id) + '"><span class="buy-label">Licenciar &middot; </span>' + brl(minPrice) + '</button>' +
+            '</article>';
+        }
+
+        return '' +
+        '<article class="bcard" data-card="' + esc(b.id) + '">' +
+            cover +
+            '<div class="bbody">' +
+                '<h3 class="btitle" title="' + esc(b.title) + '">' + esc(b.title) + '</h3>' +
+                '<div class="bprod"><span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span></div>' +
+                '<div class="bmeta">' + pill + (infoTxt ? '<span class="binfo">' + infoTxt + '</span>' : '') + '</div>' +
+                '<button class="buy-btn" data-buy="' + esc(b.id) + '">Licenciar &middot; ' + brl(minPrice) + '</button>' +
+            '</div>' +
+        '</article>';
+    }
+
+    function updateCount() {
+        var n = current.length;
+        var txt = n + (n === 1 ? ' beat' : ' beats');
+        if (filter.q) txt = n + (n === 1 ? ' resultado' : ' resultados') + ' para “' + filter.q + '”';
+        $('resultCount').textContent = txt;
+
+        var btns = document.querySelectorAll('.view-btn');
+        for (var i = 0; i < btns.length; i++) {
+            var on = btns[i].getAttribute('data-view') === view;
+            btns[i].classList.toggle('active', on);
+            btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+    }
+
+    function updateEnd() {
+        var s = $('sentinel');
+        if (current.length <= BATCH) { s.hidden = true; return; }
+        s.hidden = false;
+        s.textContent = shown < current.length ? 'Carregando mais beats...' : 'Isso é tudo por enquanto.';
+    }
+
+    var io = null;
+
+    // desenha o proximo lote (chamado pela rolagem)
+    function appendMore() {
+        if (shown >= current.length) { updateEnd(); return; }
+        var step = io ? BATCH : current.length;      // sem IntersectionObserver, mostra tudo de uma vez
+        var next = current.slice(shown, shown + step);
+        $('beatsList').insertAdjacentHTML('beforeend', next.map(cardHTML).join(''));
+        shown += next.length;
+        updateEnd();
+        if (playingId) syncIcons(audio.paused ? 'play' : 'pause');
+        // re-observa: se o lote nao encheu a tela, o observador dispara de novo
+        if (io && shown < current.length) { io.unobserve($('sentinel')); io.observe($('sentinel')); }
     }
 
     function renderBeats() {
-        renderFilters();
+        var box = $('beatsList');
 
         if (!BEATS.length) {
-            $('beatsList').innerHTML =
+            $('toolbar').hidden = true;
+            $('sentinel').hidden = true;
+            box.className = 'beats-list is-' + view;
+            box.innerHTML =
                 '<div class="state-box"><strong>Novos beats chegando</strong>' +
                 'Ainda estamos preparando o catálogo. Volte em breve.</div>';
             return;
         }
 
-        var list = BEATS.filter(matchesFilter);
-        if (!list.length) {
-            $('beatsList').innerHTML =
-                '<div class="state-box"><strong>Nenhum beat com esse filtro</strong>' +
-                'Tente outro gênero ou produtor.<br><button data-clear-filters>Limpar filtros</button></div>';
+        $('toolbar').hidden = false;
+        current = computeList();
+        shown = 0;
+        updateCount();
+        box.className = 'beats-list is-' + view;
+
+        if (!current.length) {
+            $('sentinel').hidden = true;
+            var hasFilters = filter.q || filter.genre || filter.producer;
+            var ask = filter.q
+                ? '<a class="state-link" target="_blank" rel="noopener" href="https://wa.me/' + CFG.WHATSAPP + '?text=' +
+                    encodeURIComponent('Salve! Procurei "' + filter.q + '" no Wav Lab e não achei. Vocês fazem um beat nesse estilo?') +
+                    '">Pedir esse beat no WhatsApp</a>'
+                : '';
+            box.innerHTML =
+                '<div class="state-box"><strong>' + (filter.q ? 'Nada encontrado para “' + esc(filter.q) + '”' : 'Nenhum beat com esse filtro') + '</strong>' +
+                'Tente outro nome, artista, gênero ou produtor.<br>' +
+                (hasFilters ? '<button data-clear-filters>Limpar busca e filtros</button>' : '') + ask + '</div>';
             return;
         }
 
-        $('beatsList').innerHTML = list.map(function (b) {
-            var tags = b.tags.map(function (t) { return '<span class="beat-tag">' + esc(t) + '</span>'; }).join('');
-            var info = [];
-            if (b.bpm) info.push(esc(b.bpm) + ' BPM');
-            if (b.key) info.push(esc(b.key));
-            var avatar = (b.producer.photo ? '<img src="' + esc(b.producer.photo) + '" alt="" loading="lazy">' : esc(initials(b.producer.name)));
-
-            return '' +
-            '<div class="beat-card" data-card="' + esc(b.id) + '">' +
-                '<div class="beat-main-row">' +
-                    '<div class="beat-cover" style="--g:' + b.genre.color + '">' + coverHTML(b) +
-                        '<button class="play-btn" data-play="' + esc(b.id) + '" aria-label="Ouvir ' + esc(b.title) + '"><i class="fa-solid fa-play"></i></button>' +
-                    '</div>' +
-                    '<div class="beat-details">' +
-                        '<div><span class="genre-pill" style="--g:' + b.genre.color + '">' + esc(b.genre.name) + '</span></div>' +
-                        '<div class="beat-title">' + esc(b.title) + '</div>' +
-                        '<div class="beat-producer"><span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span></div>' +
-                        '<div class="beat-info">' + info.join(' &middot; ') + '</div>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="beat-footer">' +
-                    '<div class="beat-tags">' + tags + '</div>' +
-                    '<button class="buy-btn" data-buy="' + esc(b.id) + '">Licenciar &middot; ' + brl(minPrice) + '</button>' +
-                '</div>' +
-                (b.note
-                    ? '<details class="beat-dropdown"><summary><span>Sobre o beat (nota do autor)</span><i class="fa-solid fa-chevron-down"></i></summary>' +
-                      '<div class="dropdown-body"><p class="author-note">"' + esc(b.note) + '"</p></div></details>'
-                    : '') +
-            '</div>';
-        }).join('');
-
-        // mantem o estado de "tocando" ao trocar de filtro
-        if (playingId) syncIcons(audio.paused ? 'play' : 'pause');
+        box.innerHTML = '';
+        appendMore();
     }
 
     // =========================================================
@@ -230,6 +447,19 @@
         }).join('');
     }
 
+    function commonTerms() {
+        return (CFG.COMMON_TERMS || []).map(function (t) {
+            return t.replace('nome do produtor', currentBeat ? currentBeat.producer.name : 'nome do produtor');
+        });
+    }
+
+    // texto exato da licenca que o cliente viu (fica salvo no pedido)
+    function termsSnapshot() {
+        return selectedLicense.name + ' - ' + brl(selectedLicense.price) + '\n' +
+            (selectedLicense.terms || []).map(function (t) { return '- ' + t; }).join('\n') +
+            '\n\nRegras gerais:\n' + commonTerms().map(function (t) { return '- ' + t; }).join('\n');
+    }
+
     function updateCheckoutLink() {
         if (!currentBeat) return;
         var msg = 'Salve! Quero comprar o beat *' + currentBeat.title + '* (prod. ' + currentBeat.producer.name +
@@ -242,9 +472,16 @@
         if (!currentBeat) return;
         selectedLicense = LICENSES[0];
         $('modalBeatTitle').textContent = currentBeat.title;
-        $('licenseNotes').innerHTML = (CFG.COMMON_TERMS || []).map(function (t) {
-            return '<li>' + esc(t.replace('nome do produtor', currentBeat.producer.name)) + '</li>';
-        }).join('');
+
+        var sub = ['Prod. ' + currentBeat.producer.name];
+        if (currentBeat.bpm) sub.push(currentBeat.bpm + ' BPM');
+        if (currentBeat.key) sub.push(currentBeat.key);
+        $('modalSub').textContent = sub.join(' · ');
+
+        $('modalNote').hidden = !currentBeat.note;
+        $('modalNote').textContent = currentBeat.note ? '“' + currentBeat.note + '”' : '';
+
+        $('licenseNotes').innerHTML = commonTerms().map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('');
         renderLicenses();
         updateCheckoutLink();
         modal.classList.add('active');
@@ -268,11 +505,16 @@
     $('whatsappCheckoutBtn').addEventListener('click', function () {
         if (!db || !currentBeat) return;
         try {
-            db.from('orders').insert({
+            var row = {
                 beat_id: currentBeat.id,
                 beat_title: currentBeat.title,
                 license_id: selectedLicense.id,
                 price: selectedLicense.price
+            };
+            var full = Object.assign({}, row, { terms_snapshot: termsSnapshot() });
+            db.from('orders').insert(full).then(function (r) {
+                // banco sem a migracao 02: salva o pedido sem o texto dos termos
+                if (r && r.error) return db.from('orders').insert(row);
             }).then(function () {}, function () {});
         } catch (err) { /* nunca atrapalha a compra */ }
     });
@@ -393,18 +635,44 @@
     document.addEventListener('click', function (e) {
         if (e.target.closest('[data-retry]')) { loadBeats(); return; }
 
+        var vw = e.target.closest('[data-view]');
+        if (vw) {
+            var v = vw.getAttribute('data-view');
+            if (v !== view) { view = v; lsSet('wavlab_view', v); renderBeats(); }
+            return;
+        }
+
+        var term = e.target.closest('[data-term]');
+        if (term) {
+            var t = term.getAttribute('data-term');
+            var same = norm(filter.q).trim() === norm(t).trim();
+            setQuery(same ? '' : t);
+            // clique numa tag la embaixo: leva o olhar de volta para a busca
+            if (term.closest('#beatsList') && !same) {
+                var top = $('searchForm').getBoundingClientRect().top + window.pageYOffset - 84;
+                window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            }
+            return;
+        }
+
         var fg = e.target.closest('[data-filter-genre]');
-        if (fg) { filter.genre = fg.getAttribute('data-filter-genre') || null; renderBeats(); return; }
+        if (fg) { filter.genre = fg.getAttribute('data-filter-genre') || null; renderControls(); renderBeats(); return; }
 
         var fp = e.target.closest('[data-filter-producer]');
         if (fp) {
             var pid = fp.getAttribute('data-filter-producer');
             filter.producer = (filter.producer === pid) ? null : pid;   // tocar de novo desmarca
+            renderControls();
             renderBeats();
             return;
         }
 
-        if (e.target.closest('[data-clear-filters]')) { filter.genre = null; filter.producer = null; renderBeats(); return; }
+        if (e.target.closest('[data-clear-filters]')) {
+            filter.genre = null; filter.producer = null;
+            renderControls();
+            setQuery('');
+            return;
+        }
 
         var buy = e.target.closest('[data-buy]');
         if (buy) { openModal(buy.getAttribute('data-buy')); return; }
@@ -418,6 +686,20 @@
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
     });
+
+    // rolagem infinita: quando o fim da lista chega perto da tela, entra o proximo lote
+    if ('IntersectionObserver' in window) {
+        io = new IntersectionObserver(function (entries) {
+            if (entries[0].isIntersecting) appendMore();
+        }, { rootMargin: '700px 0px' });
+        io.observe($('sentinel'));
+    }
+
+    // link com busca pronta: ?q=drake
+    try {
+        var q0 = new URLSearchParams(window.location.search).get('q');
+        if (q0) { filter.q = q0.slice(0, 60); $('searchInput').value = filter.q; $('searchClear').hidden = false; }
+    } catch (e) { /* sem URLSearchParams */ }
 
     loadBeats();
 })();

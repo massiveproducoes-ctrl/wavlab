@@ -321,6 +321,7 @@
         $('bf_bpm').value = b && b.bpm ? b.bpm : '';
         $('bf_key').value = b ? (b.musical_key || '') : '';
         $('bf_tags').value = b ? (b.tags || []).join(', ') : '';
+        $('bf_types').value = b ? (b.type_artists || []).join(', ') : '';
         $('bf_note').value = b ? (b.note || '') : '';
         $('bf_published').checked = b ? !!b.published : false;
         $('bf_stemslink').value = f.stems_link || '';
@@ -332,8 +333,67 @@
         curHint('bf_stems_cur', f.stems_path ? 'Já enviado.' : '');
         $('bf_preview_hint').className = 'hint';
         setStatus('bf_status', '');
+        updateTitleHint();
         openModal('beatModal');
     }
+
+    // ---------- titulo bom para busca (SEO) ----------
+    function norm(s) {
+        s = String(s == null ? '' : s).toLowerCase();
+        try { s = s.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (e) { /* navegador antigo */ }
+        return s;
+    }
+
+    function parseList(str, max) {
+        return String(str || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean).slice(0, max);
+    }
+
+    var titleSuggestion = '';
+
+    function updateTitleHint() {
+        var title = $('bf_title').value.trim();
+        var types = parseList($('bf_types').value, 5);
+        var hint = $('bf_title_hint'), btn = $('bf_title_use');
+        var hasType = /type\s*beat/i.test(title);
+        var nt = norm(title);
+        var cites = types.some(function (x) { return nt.indexOf(norm(x)) > -1; });
+        var problems = [];
+
+        titleSuggestion = '';
+        btn.hidden = true;
+
+        if (!title) {
+            hint.className = 'hint';
+            hint.textContent = 'Formato: Artista Type Beat - "Nome do beat". Ex.: Drake Type Beat - "Midnight Vibes".';
+            return;
+        }
+        if (!hasType) problems.push('Falta "Type Beat" no título (é o que o artista digita na busca).');
+        if (hasType && types.length && !cites) problems.push('O título não cita nenhum artista do campo "Type de".');
+        if (title.length > 70) problems.push('Tem ' + title.length + ' caracteres; acima de 70 pode ser cortado nas buscas.');
+
+        if (!problems.length) {
+            hint.className = 'hint ok';
+            hint.textContent = 'Ótimo para busca (' + title.length + ' caracteres).';
+        } else {
+            hint.className = 'hint warn';
+            hint.textContent = problems.join(' ');
+        }
+
+        if (!hasType && types.length) {
+            var s = types.slice(0, 2).join(' x ') + ' Type Beat - "' + title + '"';
+            if (s.length <= 90) {
+                titleSuggestion = s;
+                btn.textContent = 'Usar: ' + s;
+                btn.hidden = false;
+            }
+        }
+    }
+
+    $('bf_title').addEventListener('input', updateTitleHint);
+    $('bf_types').addEventListener('input', updateTitleHint);
+    $('bf_title_use').addEventListener('click', function () {
+        if (titleSuggestion) { $('bf_title').value = titleSuggestion; updateTitleHint(); }
+    });
 
     // avisa se o preview nao tem ~30s
     $('bf_preview').addEventListener('change', function () {
@@ -392,7 +452,7 @@
             var tags = $('bf_tags').value.split(',').map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean).slice(0, 6);
             var bpm = parseInt($('bf_bpm').value, 10);
 
-            var r1 = await db.from('beats').upsert({
+            var row = {
                 id: id,
                 producer_id: $('bf_producer').value,
                 genre_id: $('bf_genre').value,
@@ -400,11 +460,20 @@
                 bpm: isNaN(bpm) ? null : bpm,
                 musical_key: $('bf_key').value.trim() || null,
                 tags: tags,
+                type_artists: parseList($('bf_types').value, 5),
                 note: $('bf_note').value.trim() || null,
                 cover_url: coverUrl,
                 preview_url: prevUrl,
                 published: $('bf_published').checked
-            });
+            };
+            var r1 = await db.from('beats').upsert(row);
+            var typesSkipped = false;
+            if (r1.error && /type_artists/.test(r1.error.message || '')) {
+                // banco ainda sem a migracao 02: salva o resto e avisa
+                delete row.type_artists;
+                typesSkipped = true;
+                r1 = await db.from('beats').upsert(row);
+            }
             if (r1.error) throw new Error(r1.error.message);
 
             var r2 = await db.from('beat_files').upsert({
@@ -415,7 +484,7 @@
             if (r2.error) throw new Error(r2.error.message);
 
             closeModals();
-            toast('Beat salvo.');
+            toast(typesSkipped ? 'Beat salvo, mas o "Type de" não foi gravado: rode o SQL migracao_02 no Supabase.' : 'Beat salvo.');
             await loadAll();
         } catch (err) {
             setStatus('bf_status', err.message, true);
