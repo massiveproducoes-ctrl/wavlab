@@ -53,6 +53,8 @@
                 <button class="tab active" data-tab="beats">Beats</button>
                 <button class="tab" data-tab="producers">Produtores</button>
                 <button class="tab" data-tab="orders">Pedidos</button>
+                <button class="tab" data-tab="waitlist">Lista de espera</button>
+                <button class="tab" data-tab="stats">Resumo</button>
             </nav>
 
             <div id="tab-beats" class="tab-pane">
@@ -69,6 +71,23 @@
                 <p class="hint">Cada toque em "Finalizar via WhatsApp" na vitrine aparece aqui como <b>lead</b>. Atualize o status quando o Pix cair.</p>
                 <div id="ordersAdminList" class="admin-list"></div>
             </div>
+
+            <div id="tab-waitlist" class="tab-pane" hidden>
+                <p class="hint">Quem tocou em <b>"Quero ser avisado"</b> no bloco "Em breve no Lab" da vitrine.</p>
+                <div class="list-head">
+                    <span class="list-count" id="waitCount"></span>
+                    <button class="btn small ghost" id="waitCopy" hidden><i class="fa-regular fa-copy"></i> Copiar lista</button>
+                </div>
+                <div id="waitlistAdminList" class="admin-list"></div>
+            </div>
+
+            <div id="tab-stats" class="tab-pane" hidden>
+                <div class="list-head">
+                    <span class="list-count" id="statsTitle">Últimos 30 dias</span>
+                    <button class="btn small ghost" id="statsReload"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+                </div>
+                <div id="statsBody" class="stats-body"></div>
+            </div>
         </section>
     </main>
 
@@ -81,8 +100,11 @@
             </div>
 
             <div class="field">
-                <label for="bf_title">Título do beat * <span class="lbl-note">(é o que o artista busca)</span></label>
-                <input id="bf_title" required maxlength="90" placeholder='Ex.: Drake Type Beat - "Midnight Vibes"'>
+                <label for="bf_title" class="label-row">
+                    <span>Título do beat * <span class="lbl-note">(é o que o artista busca)</span></span>
+                    <span class="char-count" id="bf_title_count" aria-live="polite"></span>
+                </label>
+                <input id="bf_title" required placeholder='Ex.: Drake Type Beat - "Midnight Vibes"' autocomplete="off">
                 <div class="hint" id="bf_title_hint"></div>
                 <button type="button" class="btn small ghost" id="bf_title_use" hidden></button>
             </div>
@@ -99,7 +121,7 @@
                     <li><b>Formato:</b> Artista Type Beat - "Nome do beat". Ex.: <i>Travis Scott Type Beat - "Midnight"</i></li>
                     <li><b>Referência de verdade:</b> cite só quem o beat realmente lembra. Citar artista que não tem a ver derruba a confiança.</li>
                     <li><b>1 ou 2 artistas</b> no título. Mais que isso parece spam.</li>
-                    <li><b>Até 70 caracteres.</b> Acima disso o título é cortado nas buscas.</li>
+                    <li><b>Até <span id="titleMaxGuide"></span> caracteres.</b> É o limite do campo: títulos longos são cortados nas buscas.</li>
                     <li><b>Escreva o nome do artista certo.</b> Erro de grafia = ninguém acha.</li>
                     <li>Evite CAPS LOCK, emojis demais e promessas tipo "FREE" se o beat é pago.</li>
                 </ul>
@@ -151,7 +173,28 @@
                 <button type="button" class="close-modal" data-close>&times;</button>
             </div>
             <div class="field"><label for="pf_name">Nome artístico *</label><input id="pf_name" required maxlength="40"></div>
-            <div class="field"><label for="pf_handle">@ do Instagram</label><input id="pf_handle" placeholder="@seuuser" maxlength="40"></div>
+            <div class="field">
+                <label for="pf_handle">@ do Instagram <span class="lbl-note">(vira o botão Instagram da página)</span></label>
+                <input id="pf_handle" placeholder="@seuuser" maxlength="60" autocapitalize="none" spellcheck="false">
+            </div>
+
+            <div class="group-title">Página do produtor (link na bio)</div>
+            <div class="field">
+                <label for="pf_slug">Endereço da página</label>
+                <input id="pf_slug" placeholder="ex.: alexandre" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false">
+                <div class="hint" id="pf_slug_hint"></div>
+            </div>
+            <div class="field">
+                <label for="pf_bio">Bio curta</label>
+                <textarea id="pf_bio" rows="3" maxlength="280" placeholder="Uma ou duas frases sobre o som."></textarea>
+                <div class="hint" id="pf_bio_hint">Até 280 caracteres.</div>
+            </div>
+            <div class="field">
+                <label for="pf_spotify">Link do Spotify</label>
+                <input id="pf_spotify" type="url" inputmode="url" placeholder="https://open.spotify.com/artist/..." maxlength="200" autocapitalize="none" spellcheck="false">
+            </div>
+
+            <div class="group-title">Foto e visibilidade</div>
             <div class="field">
                 <label for="pf_photo">Foto (rosto, quadrada)</label>
                 <input id="pf_photo" type="file" accept="image/*">

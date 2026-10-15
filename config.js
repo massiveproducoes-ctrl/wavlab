@@ -11,6 +11,42 @@ window.WAVLAB = {
 
     PREVIEW_SECONDS: 30,
 
+    // Admin: limite de caracteres do titulo do beat (o SQL migracao_05 trava o mesmo numero no banco)
+    TITLE_MAX: 70,
+
+    // Instagram do rodape (endereco completo, comecando com https://).
+    // PROVISORIO: troque pelo perfil real. Deixe '' para esconder o link.
+    INSTAGRAM: 'https://instagram.com/wavlab',
+
+    // Bloco "Quem somos" (acima do rodape). TEXTO PROVISORIO.
+    ABOUT_TITLE: 'Quem somos',
+    ABOUT_TEXT: 'A Wav Lab é um ateliê de beats feito por produtores. Cada instrumental sai das mãos de quem assina, e você fala direto com a gente: tire dúvidas, peça um beat no seu estilo e feche a licença pelo WhatsApp.',
+
+    // Bloco "Em breve no Lab" da vitrine + formulario "Quero ser avisado". TEXTOS PROVISORIOS.
+    // icon = nome de um icone Font Awesome (fa-...)
+    COMING_SOON: {
+        TITLE: 'Em breve no Lab',
+        ITEMS: [
+            { name: 'Sample packs', desc: 'Loops e one-shots prontos para usar na sua produção.', icon: 'fa-wave-square' },
+            { name: 'Plugins', desc: 'Ferramentas para o seu som.', icon: 'fa-sliders' }
+        ],
+        BUTTON: 'Quero ser avisado',
+        JOINED: 'Você está na lista',
+        FORM_INTRO: 'Deixe seu nome e WhatsApp. A gente avisa assim que sair.',
+        NOTE: 'Usamos seu número só para avisar dos lançamentos da Wav Lab. Se quiser sair da lista, é só pedir.',
+        DONE: 'Fechou! Você está na lista e vai ser avisado pelo WhatsApp.'
+    },
+
+    // Pagina do produtor (/slug/): mensagem do botao "Falar com o produtor" ({produtor} vira o nome)
+    PRODUCER_WA_TEXT: 'Salve! Vim pela página de {produtor} no Wav Lab e queria conversar sobre os beats.',
+
+    // Enderecos que o slug de um produtor NAO pode usar (ja sao paginas ou arquivos do site)
+    RESERVED_SLUGS: ['admin', 'licencas', 'index', 'config', 'app', 'site', 'style', 'produtor', 'favicon', 'og', 'assets'],
+
+    // Pagina de licencas: modelo do credito ({produtor} vira o nome) e validade dos links de download
+    CREDIT_TEMPLATE: 'Prod. {produtor}',
+    DELIVERY_DAYS: 7,
+
     // Texto do topo da vitrine (o slogan ainda esta em definicao)
     HERO_TITLE: 'Beats com identidade.',
     HERO_SUB: 'Previews de 30s. Licencie direto e feche pelo WhatsApp.',

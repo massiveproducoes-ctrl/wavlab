@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Licenças | Wav Lab</title>
+    <meta name="description" content="Entenda as licenças dos beats do Wav Lab em linguagem simples: o que cada uma inclui, o que pode e não pode, como dar o crédito e perguntas frequentes.">
+    <meta name="theme-color" content="#0b0b0d">
+
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+    <meta property="og:title" content="Licenças | Wav Lab">
+    <meta property="og:description" content="O que cada licença inclui, como dar o crédito e como receber seus arquivos.">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:url" content="https://massiveproducoes-ctrl.github.io/wavlab/licencas.html">
+    <meta property="og:image" content="https://massiveproducoes-ctrl.github.io/wavlab/og.png">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="licencas.css">
+</head>
+<body>
+
+    <header>
+        <a class="brand" href="index.html" aria-label="Wav Lab, voltar à vitrine">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24"><path d="M3 18v-6h2v6H3zm4 2V4h2v16H7zm4-4V8h2v8h-2zm4 2v-10h2v10h-2zm4-4v-4h2v4h-2z"/></svg>
+            </div>
+            <h1 class="brand-name">WAV.<span>LAB</span></h1>
+        </a>
+        <a class="back-link" href="index.html"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Vitrine</a>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h2 class="hero-title">Licenças sem complicação.</h2>
+            <p class="hero-sub">Você paga uma vez e usa o beat na sua música. Quanto mais alta a licença, mais streams e clipes ela cobre. Veja abaixo o que cada uma inclui.</p>
+        </section>
+
+        <!-- Os 4 cartoes vem de LICENSES (config.js) -->
+        <section class="lp-section" aria-labelledby="h-licencas">
+            <h3 class="section-label" id="h-licencas">O que cada licença inclui</h3>
+            <div class="lic-grid" id="licGrid"></div>
+        </section>
+
+        <!-- Vem de COMMON_TERMS (config.js) -->
+        <section class="lp-section" aria-labelledby="h-regras">
+            <h3 class="section-label" id="h-regras">Vale para todas as licenças</h3>
+            <ul class="lp-rules" id="commonTerms"></ul>
+        </section>
+
+        <section class="lp-section" id="credito" aria-labelledby="h-credito">
+            <h3 class="section-label" id="h-credito">Como dar o crédito</h3>
+            <div class="credit-box">
+                <p>O crédito é obrigatório. Sempre que sua música for publicada, escreva o nome do produtor do beat. O nome aparece no card do beat, na vitrine.</p>
+
+                <label class="lp-label" for="creditName">Nome do produtor</label>
+                <input class="lp-input" id="creditName" type="text" maxlength="40" placeholder="Nome do Produtor" autocomplete="off">
+
+                <div class="credit-out">
+                    <code class="credit-text" id="creditText"></code>
+                    <button type="button" class="copy-btn" id="creditCopy"><i class="fa-regular fa-copy" aria-hidden="true"></i> <span id="creditCopyLabel">Copiar</span></button>
+                </div>
+
+                <p class="credit-where"><strong>Onde colocar:</strong> na descrição do vídeo no YouTube, na legenda do post e no campo de créditos da distribuidora quando você lançar a música nas plataformas.</p>
+            </div>
+        </section>
+
+        <section class="lp-section" aria-labelledby="h-faq">
+            <h3 class="section-label" id="h-faq">Perguntas frequentes</h3>
+            <div class="faq">
+                <details>
+                    <summary>Como eu pago?</summary>
+                    <p>Pelo Pix. Escolha o beat e a licença, toque em <b>Finalizar via Pix (WhatsApp)</b> e a conversa abre com o pedido pronto. A gente combina o Pix por lá.</p>
+                </details>
+                <details>
+                    <summary>Como recebo os arquivos?</summary>
+                    <p>Depois que o Pix é confirmado, enviamos os links de download na própria conversa do WhatsApp. O que vem nos arquivos depende da licença escolhida (veja os cards acima).</p>
+                </details>
+                <details>
+                    <summary>Quanto tempo valem os links?</summary>
+                    <p>Os links ficam ativos por <b><span data-cfg="DELIVERY_DAYS"></span> dias</b>. Baixe e guarde os arquivos assim que receber. Se o prazo passar, chame a gente no WhatsApp.</p>
+                </details>
+                <details>
+                    <summary>Posso usar no YouTube?</summary>
+                    <p>Pode, dentro dos limites da sua licença: cada uma cobre um número de streams e de clipes de vídeo (veja nos cards). Coloque o crédito na descrição do vídeo e siga as regras que valem para todas as licenças, como a de não registrar o beat no Content ID.</p>
+                </details>
+            </div>
+        </section>
+
+        <section class="lp-section lp-cta">
+            <a class="cta-primary" href="index.html"><i class="fa-solid fa-headphones" aria-hidden="true"></i> Ver os beats</a>
+            <a class="cta-ghost" id="ctaWhats" href="#" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Tirar dúvida no WhatsApp</a>
+        </section>
+    </main>
+
+    <section class="about" id="about" hidden></section>
+
+    <footer id="siteFooter" data-page="licencas">
+        <p>&copy; 2026 Wav Lab. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="site.js"></script>
+    <script src="licencas.js"></script>
+</body>
+</html>

@@ -25,6 +25,10 @@ Loja de beats (instrumentais) com vitrine pública e painel admin. Site estátic
 | `admin.html` | Painel admin (`/admin.html`, `noindex`). Login, abas Beats / Produtores / Pedidos, modais de beat, produtor e entrega |
 | `admin.js` | Lógica do admin |
 | `admin.css` | Estilos extras só do admin, por cima do `style.css` |
+| `licencas.html`, `licencas.js`, `licencas.css` | Página "Licenças": cards, regras gerais, crédito para copiar e FAQ. Tudo vem de `LICENSES`, `COMMON_TERMS`, `CREDIT_TEMPLATE` e `DELIVERY_DAYS` do `config.js` |
+| `alexandre/`, `drin/`, `faciebat/`, `felipe/` (cada uma com `index.html`) | Página de cada produtor, estilo link na bio, em `/<slug>/`. O `index.html` é igual em todas; só muda `data-producer="<slug>"` no `<body>` |
+| `produtor.css` | Estilos extras só da página do produtor |
+| `site.js` | Peças comuns da vitrine e da página de licenças: bloco "Quem somos" e links do rodapé (Instagram, WhatsApp) |
 | `config.js` | Configuração única, lida por vitrine e admin via `window.WAVLAB` |
 | `favicon.svg`, `og.png` | Ícone e imagem de pré-visualização do link (WhatsApp/Instagram) |
 
@@ -42,9 +46,24 @@ Os scripts são carregados na ordem: `supabase-js` (CDN jsDelivr, versão fixa) 
 - **Compra:** o modal mostra as licenças de `config.js`. O botão abre o WhatsApp (`wa.me/<WHATSAPP>`) com a mensagem pronta e grava um *lead* em `orders` com o texto exato da licença (`terms_snapshot`). O pagamento é por Pix, combinado no WhatsApp. Não existe checkout automático.
 - Todo texto vindo do banco passa por `esc()` antes de ir para `innerHTML`. Mantenha assim.
 
+### Link de beat, lista de espera e eventos (vitrine e página do produtor)
+- **`?beat=ID`:** `app.js` (`focusBeat`) desenha os lotes da rolagem infinita até o beat, rola até ele e o destaca. Ignora `?q=` quando há `?beat=`. O botão "Copiar link" do modal copia `<página atual>?beat=ID` (na página do produtor, o link aponta para a própria página dele). O modal de compra está copiado em `index.html` e em cada pasta de produtor: mexeu nele, atualize todos.
+- **"Em breve no Lab"** (só na vitrine): textos e itens em `COMING_SOON` (`config.js`). "Quero ser avisado" grava nome e WhatsApp (só dígitos, com 55) em `waitlist`. Tem campo-armadilha contra robô e lembra no `localStorage` (`wavlab_wait`).
+- **Eventos** (`events`): `play`, `license_click`, `checkout` e `search_empty` (com o termo). Sem IP, sem cookie, sem identificador de pessoa. Termos que parecem telefone, e-mail ou link nunca são gravados. Se for criar evento novo, não grave dado pessoal. A falha ao gravar nunca pode atrapalhar a vitrine.
+- Admin: abas "Lista de espera" (ver, copiar, abrir no WhatsApp, remover) e "Resumo" (últimos 30 dias, via função SQL `events_summary`). Sem a migração 04, só essas duas abas avisam; o resto do admin continua funcionando.
+- **Ao testar, nunca grave em produção:** intercepte todo POST/DELETE para o Supabase (é o banco real) e responda com dados simulados.
+
+### Página do produtor (`/<slug>/`)
+- É o mesmo `app.js` da vitrine em "modo produtor": o `<body>` traz `data-producer="<slug>"` e `data-root="../"`. Ele busca o produtor em `producers` pelo `slug` (só `active = true`), desenha foto, nome, bio e botões, e carrega só os beats dele (`producer_id`). Player, modal de compra, grade/lista e rolagem infinita são os mesmos da vitrine; busca e filtros não existem nessa página.
+- Botões: "Falar com o produtor" (WhatsApp da Wav Lab, mensagem em `PRODUCER_WA_TEXT`), Instagram (vem de `handle`) e Spotify (`spotify_url`). Botão sem dado não aparece.
+- GitHub Pages é estático: **cada slug precisa de uma pasta com o mesmo nome**. Para um produtor novo, copie uma pasta existente (ex.: `alexandre/`), renomeie e troque o `data-producer`. O slug no banco, o `data-producer` e o nome da pasta têm que ser idênticos. Slugs que não podem ser usados ficam em `RESERVED_SLUGS` (`config.js`).
+- O título da aba muda para o nome do produtor via JavaScript, mas a pré-visualização do link (`og:`) é genérica, porque o HTML é igual em todas as pastas.
+- Dentro de pastas, caminhos de arquivos usam `../`. Não use caminho começando com `/`: o site roda em `/wavlab/` no GitHub Pages.
+
 ### Admin (`admin.js`)
 - Login por e-mail e senha do Supabase Auth. As permissões reais ficam nas regras (RLS) do banco, não no JavaScript.
 - Cadastro de produtores (foto quadrada reduzida no navegador), de beats e conferência de pedidos (status `lead` → `pago` → `entregue`).
+- **Título do beat: no máximo `TITLE_MAX` caracteres (70, em `config.js`).** O campo tem `maxlength`, contador "45/70", o salvar é bloqueado acima do limite e o botão "Usar sugestão" só aparece se a sugestão couber. `migracao_05.sql` (fora do repositório) trava o mesmo limite no banco (`beats_title_len`) e só cria a regra se nenhum beat passar de 70. Se mudar `TITLE_MAX`, mude também o SQL.
 - Cadastro de beat: o título deve seguir `Artista Type Beat - "Nome"`, e o admin avisa quando não segue. Há também "Type de" (`type_artists`), tags, tom, BPM, nota, capa e preview de ~30s com tag de voz.
 - **Entrega:** gera links assinados de 7 dias dos arquivos master para o usuário colar no WhatsApp do cliente.
 - Excluir um beat apaga também os arquivos dele no storage.
@@ -53,6 +72,8 @@ Os scripts são carregados na ordem: `supabase-js` (CDN jsDelivr, versão fixa) 
 - Tabelas usadas: `genres`, `producers`, `beats`, `beat_files`, `orders`.
 - Buckets de storage: `covers`, `previews`, `avatars` (públicos) e `masters` (privado, só por link assinado).
 - **Compatibilidade com o banco antigo:** `type_artists` (em `beats`) e `terms_snapshot` (em `orders`) vêm de uma migração SQL (`migracao_02`) que o usuário aplica no Supabase por conta própria. Se a coluna não existir, vitrine e admin tentam de novo sem ela e continuam funcionando. Preserve esse comportamento ao mexer nessas consultas.
+- **Migração 04** (`~\Documents\wavlab-sql\migracao_04.sql`, fora do repositório): cria `waitlist` e `events` (público só insere; só quem está logado no admin lê), um freio contra enxurrada de registros e a função `events_summary(dias)`. Tabelas `waitlist` e `events` e a função só existem depois dela.
+- **Migração 03** (`~\Documents\wavlab-sql\migracao_03.sql`, fora do repositório): cria `slug`, `bio` e `spotify_url` em `producers`. O admin tenta de novo sem esses campos se a migração não foi aplicada (e avisa). A página do produtor só funciona depois dela.
 
 ## Como testar
 

@@ -76,6 +76,13 @@
         <div class="beats-list is-grid" id="beatsList"></div>
         <div class="sentinel" id="sentinel" hidden></div>
 
+        <!-- Em breve no Lab: textos vem do config.js (COMING_SOON) -->
+        <section class="soon" id="soon" hidden>
+            <h3 class="section-label" id="soonTitle"></h3>
+            <div class="soon-items" id="soonItems"></div>
+            <button type="button" class="soon-btn" id="soonBtn"></button>
+        </section>
+
         <div class="creator-banner">
             <h4>É PRODUTOR MUSICAL?</h4>
             <p>Em breve o Wav Lab abrirá espaço para novos produtores publicarem seus beats.</p>
@@ -83,8 +90,11 @@
         </div>
     </main>
 
-    <footer>
-        &copy; 2026 Wav Lab. Todos os direitos reservados.
+    <!-- Quem somos e links do rodape: site.js preenche a partir do config.js -->
+    <section class="about" id="about" hidden></section>
+
+    <footer id="siteFooter">
+        <p>&copy; 2026 Wav Lab. Todos os direitos reservados.</p>
     </footer>
 
     <!-- Mini player fixo -->
@@ -113,9 +123,43 @@
             <p class="modal-note" id="modalNote" hidden></p>
             <div class="license-options" id="licenseOptions"></div>
             <ul class="license-notes" id="licenseNotes"></ul>
+            <div class="modal-links">
+                <button type="button" class="link-btn" id="copyLinkBtn"><i class="fa-solid fa-link" aria-hidden="true"></i> Copiar link</button>
+                <a class="license-help" href="licencas.html" target="_blank" rel="noopener"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Entenda as licenças</a>
+            </div>
             <a id="whatsappCheckoutBtn" href="#" target="_blank" rel="noopener" class="checkout-btn">
                 <i class="fa-brands fa-whatsapp"></i> Finalizar via Pix (WhatsApp)
             </a>
+        </div>
+    </div>
+
+    <!-- Modal: Quero ser avisado -->
+    <div id="waitModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="waitTitle">Quero ser avisado</h3>
+                <button class="close-modal" data-close-wait aria-label="Fechar">&times;</button>
+            </div>
+            <form id="waitForm" novalidate autocomplete="off">
+                <p class="wl-intro" id="waitIntro"></p>
+                <div class="wl-field">
+                    <label for="waitName">Seu nome</label>
+                    <input id="waitName" type="text" maxlength="60" autocomplete="name" placeholder="Como te chamamos?">
+                </div>
+                <div class="wl-field">
+                    <label for="waitPhone">WhatsApp com DDD</label>
+                    <input id="waitPhone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="(91) 90000-0000">
+                </div>
+                <div class="wl-hp" aria-hidden="true"><label>Site <input id="waitHp" type="text" tabindex="-1" autocomplete="off"></label></div>
+                <p class="wl-note" id="waitNote"></p>
+                <div class="wl-status" id="waitStatus" role="status"></div>
+                <button type="submit" class="soon-btn" id="waitSend">Quero ser avisado</button>
+            </form>
+            <div class="wl-done" id="waitDone" hidden>
+                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                <p id="waitDoneText"></p>
+                <button type="button" class="soon-btn" data-close-wait>Fechar</button>
+            </div>
         </div>
     </div>
 
@@ -123,6 +167,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <script src="config.js"></script>
+    <script src="site.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

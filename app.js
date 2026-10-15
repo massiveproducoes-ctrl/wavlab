@@ -10,6 +10,37 @@
     var BEATS = [];
     var db = null;
 
+    // Pagina do produtor (/slug/): o <body> traz data-producer="slug" e so os beats dele aparecem
+    var PRODUCER_SLUG = document.body.getAttribute('data-producer');
+    var ROOT = document.body.getAttribute('data-root') || '';
+    var PRODUCER = null;
+    var SEARCH_ON = !!$('searchForm');      // a pagina do produtor nao tem busca
+
+    // link compartilhado: ?beat=ID rola ate o beat e destaca (so aceita o formato de um id)
+    var BEAT_PARAM = null;
+    try {
+        var bp = new URLSearchParams(window.location.search).get('beat');
+        if (bp && /^[A-Za-z0-9-]{1,64}$/.test(bp)) BEAT_PARAM = bp;
+    } catch (e) { /* sem URLSearchParams */ }
+
+    function getDb() {
+        if (!db && window.supabase) db = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY);
+        return db;
+    }
+
+    // Eventos simples (play, licenciar, finalizar, busca sem resultado). Sem IP, sem identificador, so o que esta abaixo.
+    // Nunca atrapalha a vitrine: se falhar (ou se a tabela ainda nao existir), segue em silencio.
+    function track(type, f) {
+        if (!getDb()) return;
+        try {
+            var row = { type: type };
+            if (f && f.beat) row.beat_id = f.beat;
+            if (f && f.license) row.license_id = f.license;
+            if (f && f.term) row.term = f.term;
+            db.from('events').insert(row).then(function () {}, function () {});
+        } catch (err) { /* nunca atrapalha */ }
+    }
+
     // =========================================================
     // HELPERS
     // =========================================================
@@ -68,8 +99,8 @@
     var minPrice = Math.min.apply(null, LICENSES.map(function (l) { return l.price; }));
 
     // textos do topo vem do config.js
-    if (CFG.HERO_TITLE) $('heroTitle').textContent = CFG.HERO_TITLE;
-    if (CFG.HERO_SUB) $('heroSub').textContent = CFG.HERO_SUB;
+    if (CFG.HERO_TITLE && $('heroTitle')) $('heroTitle').textContent = CFG.HERO_TITLE;
+    if (CFG.HERO_SUB && $('heroSub')) $('heroSub').textContent = CFG.HERO_SUB;
 
     // =========================================================
     // ESTADO DA VITRINE
@@ -112,27 +143,89 @@
     var COLS = 'id,title,bpm,musical_key,tags,note,cover_url,preview_url,created_at,producers(id,name,handle,photo_url),genres(id,name,color,sort)';
 
     function fetchBeats(cols) {
-        return db.from('beats').select(cols).eq('published', true).order('created_at', { ascending: false });
+        var q = db.from('beats').select(cols).eq('published', true);
+        if (PRODUCER) q = q.eq('producer_id', PRODUCER.id);
+        return q.order('created_at', { ascending: false });
     }
 
     function loadBeats() {
         showSkeleton();
         if (!window.supabase) { showError(); return; }
-        if (!db) db = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY);
+        getDb();
 
-        fetchBeats(COLS + ',type_artists')
-            .then(function (res) {
-                // se o banco ainda nao recebeu a migracao 02, a vitrine segue funcionando sem "type"
-                if (res.error && /type_artists/.test(res.error.message || '')) return fetchBeats(COLS);
-                return res;
-            })
+        // pagina do produtor: acha o produtor pelo slug antes de buscar os beats
+        var ready = (PRODUCER_SLUG && !PRODUCER) ? loadProducer() : Promise.resolve(true);
+        ready.then(function (found) {
+            if (!found) return;
+            return fetchBeats(COLS + ',type_artists')
+                .then(function (res) {
+                    // se o banco ainda nao recebeu a migracao 02, a vitrine segue funcionando sem "type"
+                    if (res.error && /type_artists/.test(res.error.message || '')) return fetchBeats(COLS);
+                    return res;
+                })
+                .then(function (res) {
+                    if (res.error) throw res.error;
+                    BEATS = (res.data || []).map(normalize);
+                    renderControls();
+                    renderBeats();
+                    focusBeat();
+                });
+        }).catch(function () { showError(); });
+    }
+
+    // =========================================================
+    // PAGINA DO PRODUTOR (link na bio)
+    // =========================================================
+    function instagramUrl(handle) {
+        var h = String(handle || '').trim().replace(/^@/, '');
+        return /^[A-Za-z0-9._]{1,30}$/.test(h) ? 'https://instagram.com/' + h : null;
+    }
+
+    function spotifyUrl(url) {
+        url = String(url || '').trim();
+        return /^https:\/\/(open\.)?spotify\.com\//i.test(url) ? url : null;
+    }
+
+    function loadProducer() {
+        return db.from('producers')
+            .select('id,name,handle,photo_url,bio,spotify_url,slug')
+            .eq('slug', PRODUCER_SLUG).eq('active', true).maybeSingle()
             .then(function (res) {
                 if (res.error) throw res.error;
-                BEATS = (res.data || []).map(normalize);
-                renderControls();
-                renderBeats();
-            })
-            .catch(function () { showError(); });
+                if (!res.data) { showNotFound(); return false; }
+                PRODUCER = res.data;
+                renderProfile(PRODUCER);
+                return true;
+            });
+    }
+
+    function renderProfile(p) {
+        document.title = p.name + ' | Wav Lab';
+        $('pfBeatsLabel').textContent = 'Beats de ' + p.name;
+
+        var ig = instagramUrl(p.handle), sp = spotifyUrl(p.spotify_url);
+        var msg = (CFG.PRODUCER_WA_TEXT || 'Salve! Vim pela página de {produtor} no Wav Lab.').replace('{produtor}', function () { return p.name; });
+        var wa = 'https://wa.me/' + CFG.WHATSAPP + '?text=' + encodeURIComponent(msg);
+
+        $('profile').innerHTML =
+            '<div class="pf-avatar">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="Foto de ' + esc(p.name) + '">' : '<span>' + esc(initials(p.name)) + '</span>') + '</div>' +
+            '<h1 class="pf-name">' + esc(p.name) + '</h1>' +
+            (p.bio ? '<p class="pf-bio">' + esc(p.bio) + '</p>' : '') +
+            '<div class="pf-links">' +
+                '<a class="pf-btn primary" href="' + esc(wa) + '" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com o produtor</a>' +
+                (ig ? '<a class="pf-btn" href="' + esc(ig) + '" target="_blank" rel="noopener"><i class="fa-brands fa-instagram" aria-hidden="true"></i> Instagram</a>' : '') +
+                (sp ? '<a class="pf-btn" href="' + esc(sp) + '" target="_blank" rel="noopener"><i class="fa-brands fa-spotify" aria-hidden="true"></i> Spotify</a>' : '') +
+            '</div>';
+    }
+
+    function showNotFound() {
+        $('profile').innerHTML = '';
+        $('pfBeatsLabel').hidden = true;
+        $('toolbar').hidden = true;
+        $('sentinel').hidden = true;
+        $('beatsList').innerHTML =
+            '<div class="state-box"><strong>Produtor não encontrado</strong>' +
+            'Confira o endereço ou veja todos os beats.<br><a class="state-link" href="' + ROOT + 'index.html">Ver a vitrine</a></div>';
     }
 
     // =========================================================
@@ -178,6 +271,7 @@
         try {
             var u = new URL(window.location.href);
             if (filter.q) u.searchParams.set('q', filter.q); else u.searchParams.delete('q');
+            u.searchParams.delete('beat');
             window.history.replaceState(null, '', u.pathname + u.search + u.hash);
         } catch (e) { /* sem URL, tudo bem */ }
     }
@@ -192,24 +286,26 @@
     }
 
     var searchTimer = null;
-    $('searchInput').addEventListener('input', function () {
-        var v = this.value;
-        $('searchClear').hidden = !v;
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(function () { setQuery(v, true); }, 140);
-    });
+    if (SEARCH_ON) {
+        $('searchInput').addEventListener('input', function () {
+            var v = this.value;
+            $('searchClear').hidden = !v;
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () { setQuery(v, true); }, 140);
+        });
 
-    $('searchForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        clearTimeout(searchTimer);
-        setQuery($('searchInput').value, true);
-        $('searchInput').blur();     // fecha o teclado no celular
-    });
+        $('searchForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            clearTimeout(searchTimer);
+            setQuery($('searchInput').value, true);
+            $('searchInput').blur();     // fecha o teclado no celular
+        });
 
-    $('searchClear').addEventListener('click', function () {
-        setQuery('');
-        $('searchInput').focus();
-    });
+        $('searchClear').addEventListener('click', function () {
+            setQuery('');
+            $('searchInput').focus();
+        });
+    }
 
     // =========================================================
     // RENDER
@@ -266,6 +362,7 @@
 
     // genero + produtores
     function renderControls() {
+        if (PRODUCER_SLUG) return;      // a pagina do produtor nao tem filtros
         var genres = {}, producers = {}, gList = [], pList = [];
 
         BEATS.forEach(function (b) {
@@ -322,7 +419,9 @@
 
         if (view === 'list') {
             var tags = b.types.concat(b.tags).slice(0, 3).map(function (t) {
-                return '<button type="button" class="beat-tag" data-term="' + esc(t) + '">' + esc(t) + '</button>';
+                return SEARCH_ON
+                    ? '<button type="button" class="beat-tag" data-term="' + esc(t) + '">' + esc(t) + '</button>'
+                    : '<span class="beat-tag">' + esc(t) + '</span>';
             }).join('');
             return '' +
             '<article class="brow" data-card="' + esc(b.id) + '">' +
@@ -387,8 +486,45 @@
         if (io && shown < current.length) { io.unobserve($('sentinel')); io.observe($('sentinel')); }
     }
 
+    // rola ate o beat do link ?beat=ID e destaca (uma vez so)
+    function focusBeat() {
+        var id = BEAT_PARAM;
+        BEAT_PARAM = null;
+        if (!id) return;
+        var b = findBeat(id);
+        if (!b) { toast('Esse beat não está mais disponível.'); return; }
+
+        // a rolagem infinita desenha em lotes: desenha ate o beat aparecer
+        var idx = current.indexOf(b);
+        while (idx > -1 && shown <= idx && shown < current.length) appendMore();
+
+        var cards = document.querySelectorAll('[data-card]');
+        for (var i = 0; i < cards.length; i++) {
+            if (cards[i].getAttribute('data-card') !== id) continue;
+            cards[i].scrollIntoView({ block: 'center' });
+            cards[i].classList.add('is-highlight');
+            (function (el) { setTimeout(function () { el.classList.remove('is-highlight'); }, 5200); })(cards[i]);
+            return;
+        }
+    }
+
+    // busca sem resultado (so o termo, nada mais): espera a pessoa parar de digitar
+    var emptyTimer = null, lastEmptyTerm = '';
+    function trackEmptySearch() {
+        var q = filter.q;
+        if (!q || filter.genre || filter.producer || current.length) return;
+        emptyTimer = setTimeout(function () {
+            var t = String(q).toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 60);
+            if (!t || t === lastEmptyTerm) return;
+            if (/\d{6,}|@|https?:|www\./.test(t)) return;      // nada que pareca telefone, e-mail ou link
+            lastEmptyTerm = t;
+            track('search_empty', { term: t });
+        }, 1500);
+    }
+
     function renderBeats() {
         var box = $('beatsList');
+        clearTimeout(emptyTimer);
 
         if (!BEATS.length) {
             $('toolbar').hidden = true;
@@ -418,6 +554,7 @@
                 '<div class="state-box"><strong>' + (filter.q ? 'Nada encontrado para “' + esc(filter.q) + '”' : 'Nenhum beat com esse filtro') + '</strong>' +
                 'Tente outro nome, artista, gênero ou produtor.<br>' +
                 (hasFilters ? '<button data-clear-filters>Limpar busca e filtros</button>' : '') + ask + '</div>';
+            trackEmptySearch();
             return;
         }
 
@@ -493,6 +630,33 @@
         document.body.classList.remove('modal-open');
     }
 
+    // link do beat: <esta pagina>?beat=ID
+    function copyText(text, done) {
+        function fallback() {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+            document.body.appendChild(ta);
+            ta.select();
+            var okCopy = false;
+            try { okCopy = document.execCommand('copy'); } catch (err) { /* sem permissao */ }
+            document.body.removeChild(ta);
+            done(okCopy);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+        else fallback();
+    }
+
+    $('copyLinkBtn').addEventListener('click', function () {
+        if (!currentBeat) return;
+        var u = new URL(window.location.href);
+        u.search = '';
+        u.hash = '';
+        u.searchParams.set('beat', currentBeat.id);
+        copyText(u.toString(), function (okCopy) { toast(okCopy ? 'Link do beat copiado.' : 'Não foi possível copiar. Copie o endereço do navegador.'); });
+    });
+
     $('licenseOptions').addEventListener('change', function (e) {
         for (var i = 0; i < LICENSES.length; i++) {
             if (LICENSES[i].id === e.target.value) selectedLicense = LICENSES[i];
@@ -504,6 +668,7 @@
     // registra o pedido (lead) quando a pessoa toca em "Finalizar"
     $('whatsappCheckoutBtn').addEventListener('click', function () {
         if (!db || !currentBeat) return;
+        track('checkout', { beat: currentBeat.id, license: selectedLicense.id });
         try {
             var row = {
                 beat_id: currentBeat.id,
@@ -568,6 +733,8 @@
 
         if (playingId === beatId) {
             if (audio.paused) {
+                // so conta como novo play se recomecou do zero (pausar e retomar nao conta de novo)
+                if (audio.currentTime === 0 || audio.currentTime >= previewLength()) track('play', { beat: beatId });
                 if (audio.currentTime >= previewLength()) audio.currentTime = 0;
                 audio.play().catch(onError);
             } else {
@@ -578,6 +745,7 @@
 
         audio.pause();
         playingId = beatId;
+        track('play', { beat: beatId });
         audio.src = beat.audio;
         audio.currentTime = 0;
         showMiniPlayer(beat);
@@ -630,6 +798,91 @@
     });
 
     // =========================================================
+    // EM BREVE NO LAB (lista de espera: nome + WhatsApp)
+    // =========================================================
+    var SOON = CFG.COMING_SOON;
+    var waitModal = $('waitModal');
+
+    function setWaitStatus(msg, isErr) {
+        $('waitStatus').textContent = msg || '';
+        $('waitStatus').classList.toggle('err', !!isErr);
+    }
+
+    // so digitos, com 55 + DDD (aceita "(91) 98544-7000", "91985447000", "+55 91 98544-7000")
+    function normPhone(v) {
+        var d = String(v || '').replace(/\D/g, '').replace(/^0+/, '');
+        if (d.length >= 10 && d.length <= 11) d = '55' + d;
+        return /^\d{12,15}$/.test(d) ? d : '';
+    }
+
+    function markJoined() {
+        var b = $('soonBtn');
+        b.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> ' + esc(SOON.JOINED || 'Você está na lista');
+        b.classList.add('joined');
+        b.disabled = true;
+    }
+
+    function showWaitDone() {
+        lsSet('wavlab_wait', '1');
+        markJoined();
+        $('waitForm').hidden = true;
+        $('waitDone').hidden = false;
+    }
+
+    function openWait() {
+        setWaitStatus('');
+        $('waitForm').hidden = false;
+        $('waitDone').hidden = true;
+        waitModal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
+
+    function closeWait() {
+        if (!waitModal) return;
+        waitModal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
+
+    if (SOON && $('soon')) {
+        $('soonTitle').textContent = SOON.TITLE || 'Em breve';
+        $('soonItems').innerHTML = (SOON.ITEMS || []).map(function (it) {
+            var icon = /^fa-[a-z0-9-]+$/.test(it.icon || '') ? it.icon : 'fa-star';
+            return '<div class="soon-item"><i class="fa-solid ' + icon + '" aria-hidden="true"></i>' +
+                '<div><h4>' + esc(it.name) + '</h4><p>' + esc(it.desc) + '</p></div></div>';
+        }).join('');
+        $('soonBtn').textContent = SOON.BUTTON || 'Quero ser avisado';
+        $('waitTitle').textContent = SOON.BUTTON || 'Quero ser avisado';
+        $('waitSend').textContent = SOON.BUTTON || 'Quero ser avisado';
+        $('waitIntro').textContent = SOON.FORM_INTRO || '';
+        $('waitNote').textContent = SOON.NOTE || '';
+        $('waitDoneText').textContent = SOON.DONE || '';
+        $('soon').hidden = false;
+        if (lsGet('wavlab_wait')) markJoined();
+
+        $('soonBtn').addEventListener('click', openWait);
+
+        $('waitForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            if ($('waitHp').value) { showWaitDone(); return; }      // campo-armadilha preenchido: e robo, finge que deu certo
+            var name = $('waitName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
+            var phone = normPhone($('waitPhone').value);
+            if (name.length < 2) { setWaitStatus('Escreva seu nome.', true); $('waitName').focus(); return; }
+            if (!phone) { setWaitStatus('Confira o WhatsApp: use DDD + número, por exemplo (91) 90000-0000.', true); $('waitPhone').focus(); return; }
+            var client = getDb();
+            if (!client) { setWaitStatus('Sem conexão com o servidor. Recarregue a página.', true); return; }
+
+            function fail() { $('waitSend').disabled = false; setWaitStatus('Não foi possível salvar agora. Tente de novo em instantes.', true); }
+            $('waitSend').disabled = true;
+            setWaitStatus('Enviando...');
+            client.from('waitlist').insert({ name: name, whatsapp: phone }).then(function (r) {
+                if (r && r.error) { fail(); return; }
+                $('waitSend').disabled = false;
+                showWaitDone();
+            }, fail);
+        });
+    }
+
+    // =========================================================
     // EVENTOS GERAIS
     // =========================================================
     document.addEventListener('click', function (e) {
@@ -675,16 +928,20 @@
         }
 
         var buy = e.target.closest('[data-buy]');
-        if (buy) { openModal(buy.getAttribute('data-buy')); return; }
+        if (buy) { track('license_click', { beat: buy.getAttribute('data-buy') }); openModal(buy.getAttribute('data-buy')); return; }
 
         var p = e.target.closest('[data-play]');
         if (p) { play(p.getAttribute('data-play')); return; }
+
+        if (e.target.closest('[data-close-wait]') || (waitModal && e.target === waitModal)) { closeWait(); return; }
 
         if (e.target.closest('[data-close-modal]') || e.target === modal) closeModal();
     });
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
+        if (e.key !== 'Escape') return;
+        if (modal.classList.contains('active')) closeModal();
+        if (waitModal && waitModal.classList.contains('active')) closeWait();
     });
 
     // rolagem infinita: quando o fim da lista chega perto da tela, entra o proximo lote
@@ -698,7 +955,7 @@
     // link com busca pronta: ?q=drake
     try {
         var q0 = new URLSearchParams(window.location.search).get('q');
-        if (q0) { filter.q = q0.slice(0, 60); $('searchInput').value = filter.q; $('searchClear').hidden = false; }
+        if (q0 && SEARCH_ON && !BEAT_PARAM) { filter.q = q0.slice(0, 60); $('searchInput').value = filter.q; $('searchClear').hidden = false; }
     } catch (e) { /* sem URLSearchParams */ }
 
     loadBeats();

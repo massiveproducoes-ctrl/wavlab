@@ -7,8 +7,9 @@
     var MB = 1024 * 1024;
     var LIMIT_MASTER = 50 * MB;   // limite do plano gratis do Supabase
     var LIMIT_PREVIEW = 15 * MB;
+    var TITLE_MAX = CFG.TITLE_MAX || 70;     // limite do titulo do beat (config.js)
 
-    var state = { genres: [], producers: [], beats: [], files: {}, orders: [] };
+    var state = { genres: [], producers: [], beats: [], files: {}, orders: [], waitlist: null, waitlistErr: '' };
     var editingBeat = null;
     var editingProducer = null;
     var deliveryBeat = null;
@@ -47,12 +48,12 @@
     }
 
     var toastTimer = null;
-    function toast(msg) {
+    function toast(msg, ms) {
         var t = $('toast');
         t.textContent = msg;
         t.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2800);
+        toastTimer = setTimeout(function () { t.classList.remove('show'); }, ms || 2800);
     }
 
     function setStatus(id, msg, isErr) {
@@ -157,6 +158,8 @@
         res[3].data.forEach(function (f) { state.files[f.beat_id] = f; });
         state.orders = res[4].data;
         renderAll();
+        loadWaitlist();      // fora do Promise.all: se a migracao 04 nao foi aplicada, so essa aba avisa
+        if (statsLoaded) loadStats();
     }
 
     function renderAll() { renderBeats(); renderProducers(); renderOrders(); }
@@ -216,11 +219,14 @@
                     '<div class="thumb round">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '') + '<span>' + esc(initials(p.name)) + '</span></div>' +
                     '<div class="item-info">' +
                         '<div class="item-title">' + esc(p.name) + '</div>' +
-                        '<div class="item-sub"><span>' + esc(p.handle || 'sem @') + '</span><span>' + n + ' beat' + (n === 1 ? '' : 's') + '</span></div>' +
+                        '<div class="item-sub"><span>' + esc(p.handle || 'sem @') + '</span><span>' + n + ' beat' + (n === 1 ? '' : 's') + '</span>' + (p.slug ? '<span>/' + esc(p.slug) + '</span>' : '') + '</div>' +
                     '</div>' +
                     '<label class="switch" title="Ativo"><input type="checkbox" data-toggle-producer="' + p.id + '"' + (p.active ? ' checked' : '') + '><span></span></label>' +
                 '</div>' +
-                '<div class="item-actions"><button class="btn small" data-act="edit-producer" data-id="' + p.id + '"><i class="fa-solid fa-pen"></i> Editar</button></div>' +
+                '<div class="item-actions">' +
+                    '<button class="btn small" data-act="edit-producer" data-id="' + p.id + '"><i class="fa-solid fa-pen"></i> Editar</button>' +
+                    (p.slug ? '<a class="btn small ghost" href="' + esc(p.slug) + '/" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Página</a>' : '') +
+                '</div>' +
             '</div>';
         }).join('');
     }
@@ -250,17 +256,279 @@
     }
 
     // =========================================================
+    // LISTA DE ESPERA ("Quero ser avisado")
+    // =========================================================
+    function fmtPhone(d) {
+        d = String(d || '');
+        var m = /^55(\d{2})(\d{4,5})(\d{4})$/.exec(d);
+        return m ? '+55 ' + m[1] + ' ' + m[2] + '-' + m[3] : '+' + d;
+    }
+
+    function fmtWhen(iso) { return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); }
+
+    async function loadWaitlist() {
+        var r = await db.from('waitlist').select('*').order('created_at', { ascending: false }).limit(500);
+        state.waitlist = r.error ? null : r.data;
+        state.waitlistErr = r.error ? r.error.message : '';
+        renderWaitlist();
+    }
+
+    function renderWaitlist() {
+        var box = $('waitlistAdminList');
+        $('waitCopy').hidden = true;
+        if (state.waitlistErr) {
+            $('waitCount').textContent = '';
+            box.innerHTML = '<div class="empty">Não foi possível ler a lista.<br>Rode o SQL <b>migracao_04</b> no Supabase.<br><small>' + esc(state.waitlistErr) + '</small></div>';
+            return;
+        }
+        var list = state.waitlist || [];
+        $('waitCount').textContent = list.length + (list.length === 1 ? ' pessoa' : ' pessoas');
+        if (!list.length) { box.innerHTML = '<div class="empty">Ninguém na lista ainda.</div>'; return; }
+        $('waitCopy').hidden = false;
+        box.innerHTML = list.map(function (w) {
+            return '' +
+            '<div class="item">' +
+                '<div class="item-top">' +
+                    '<div class="item-info">' +
+                        '<div class="item-title">' + esc(w.name) + '</div>' +
+                        '<div class="item-sub"><span>' + esc(fmtPhone(w.whatsapp)) + '</span><span>' + esc(fmtWhen(w.created_at)) + '</span></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="item-actions">' +
+                    '<a class="btn small" href="https://wa.me/' + esc(w.whatsapp) + '" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>' +
+                    '<button class="btn small ghost danger" data-act="delete-wait" data-id="' + esc(w.id) + '" aria-label="Remover da lista"><i class="fa-solid fa-trash"></i></button>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    async function deleteWait(id) {
+        var w = findIn(state.waitlist || [], Number(id));
+        if (!w || !confirm('Remover ' + w.name + ' da lista de espera?')) return;
+        var r = await db.from('waitlist').delete().eq('id', w.id);
+        if (r.error) { toast('Erro: ' + r.error.message); return; }
+        toast('Removido da lista.');
+        loadWaitlist();
+    }
+
+    $('waitCopy').addEventListener('click', async function () {
+        var text = (state.waitlist || []).map(function (w) { return w.name + ' - ' + fmtPhone(w.whatsapp); }).join('\n');
+        var done = false;
+        try { await navigator.clipboard.writeText(text); done = true; } catch (e) { /* tenta o plano B */ }
+        if (!done) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { done = document.execCommand('copy'); } catch (e) { /* sem permissao */ }
+            document.body.removeChild(ta);
+        }
+        toast(done ? 'Lista copiada.' : 'Não foi possível copiar.');
+    });
+
+    // =========================================================
+    // RESUMO DOS ULTIMOS 30 DIAS (eventos)
+    // =========================================================
+    var statsLoaded = false;
+    var STATS_DAYS = 30;
+
+    function nfmt(n) { return Number(n || 0).toLocaleString('pt-BR'); }
+
+    // os ultimos N dias (hoje no horario de Sao Paulo, o mesmo usado pelo SQL), do mais antigo ao mais novo
+    function lastDays(n) {
+        var today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        var p = today.split('-');
+        var base = Date.UTC(+p[0], +p[1] - 1, +p[2]);
+        var out = [];
+        for (var i = n - 1; i >= 0; i--) out.push(new Date(base - i * 86400000).toISOString().slice(0, 10));
+        return out;
+    }
+
+    function dayLabel(iso) { return iso.slice(8, 10) + '/' + iso.slice(5, 7); }
+
+    function licenseName(id) {
+        var l = findIn(CFG.LICENSES || [], id);
+        return l ? l.name : String(id).toUpperCase();
+    }
+
+    function beatTitle(id) {
+        var b = findIn(state.beats, id);
+        return b ? b.title : 'Beat removido';
+    }
+
+    // barras horizontais de uma serie so (um tom, valor na ponta)
+    function barList(rows, labelOf) {
+        var max = rows.reduce(function (m, r) { return Math.max(m, r.n); }, 1);
+        return '<ul class="rank">' + rows.map(function (r) {
+            return '<li><span class="rank-label">' + esc(labelOf(r)) + '</span>' +
+                '<span class="rank-track"><span class="rank-fill" style="width:' + Math.max(2, Math.round(r.n / max * 100)) + '%"></span></span>' +
+                '<span class="rank-val">' + nfmt(r.n) + '</span></li>';
+        }).join('') + '</ul>';
+    }
+
+    function renderStats(s) {
+        var t = s.totals || {};
+        var days = lastDays(s.days || STATS_DAYS);
+        var byDay = {};
+        (s.daily || []).forEach(function (d) { byDay[d.day] = d; });
+        var series = days.map(function (d) { return { day: d, play: (byDay[d] || {}).play || 0, lic: (byDay[d] || {}).license_click || 0, chk: (byDay[d] || {}).checkout || 0 }; });
+        var maxPlay = series.reduce(function (m, x) { return Math.max(m, x.play); }, 0);
+        var total = (t.play || 0) + (t.license_click || 0) + (t.checkout || 0) + (t.search_empty || 0);
+
+        $('statsTitle').textContent = 'Últimos ' + (s.days || STATS_DAYS) + ' dias';
+
+        if (!total) {
+            $('statsBody').innerHTML = '<div class="empty">Ainda não há eventos neste período.<br>Eles aparecem aqui conforme o pessoal usa a vitrine.</div>';
+            return;
+        }
+
+        var rate = t.license_click ? Math.round((t.checkout || 0) / t.license_click * 100) : null;
+        var html = '';
+
+        html += '<div class="kpis">' +
+            '<div class="kpi"><div class="kpi-label">Plays</div><div class="kpi-val">' + nfmt(t.play) + '</div></div>' +
+            '<div class="kpi"><div class="kpi-label">Cliques em Licenciar</div><div class="kpi-val">' + nfmt(t.license_click) + '</div></div>' +
+            '<div class="kpi"><div class="kpi-label">Finalizar (WhatsApp)</div><div class="kpi-val">' + nfmt(t.checkout) + '</div></div>' +
+            '<div class="kpi"><div class="kpi-label">Buscas sem resultado</div><div class="kpi-val">' + nfmt(t.search_empty) + '</div></div>' +
+        '</div>';
+        if (rate !== null) html += '<p class="hint">De cada 100 cliques em Licenciar, <b>' + rate + '</b> chegaram ao Finalizar.</p>';
+
+        // plays por dia (uma serie, uma cor)
+        html += '<div class="stat-card"><div class="stat-title">Plays por dia</div>' +
+            '<div class="col-chart" id="colChart" role="img" aria-label="Plays por dia nos últimos ' + days.length + ' dias. Veja a tabela logo abaixo.">' +
+                '<span class="col-max">' + nfmt(maxPlay) + '</span>' +
+                series.map(function (x, i) {
+                    var h = maxPlay ? Math.max(x.play ? 4 : 0, Math.round(x.play / maxPlay * 100)) : 0;
+                    return '<div class="col" data-i="' + i + '"><div class="col-fill" style="height:' + h + '%"></div></div>';
+                }).join('') +
+                '<div class="col-tip" id="colTip" hidden></div>' +
+            '</div>' +
+            '<div class="col-axis"><span>' + dayLabel(days[0]) + '</span><span>' + dayLabel(days[days.length - 1]) + '</span></div>' +
+            '<details class="table-view"><summary>Ver em tabela</summary><div class="table-scroll"><table>' +
+                '<thead><tr><th>Dia</th><th>Plays</th><th>Licenciar</th><th>Finalizar</th></tr></thead><tbody>' +
+                series.slice().reverse().map(function (x) { return '<tr><td>' + dayLabel(x.day) + '</td><td>' + x.play + '</td><td>' + x.lic + '</td><td>' + x.chk + '</td></tr>'; }).join('') +
+            '</tbody></table></div></details></div>';
+
+        if ((s.top_beats || []).length) {
+            html += '<div class="stat-card"><div class="stat-title">Beats mais ativos</div><div class="table-scroll"><table>' +
+                '<thead><tr><th>Beat</th><th>Plays</th><th>Licenciar</th><th>Finalizar</th></tr></thead><tbody>' +
+                s.top_beats.map(function (b) { return '<tr><td class="td-title">' + esc(beatTitle(b.beat_id)) + '</td><td>' + nfmt(b.plays) + '</td><td>' + nfmt(b.license_clicks) + '</td><td>' + nfmt(b.checkouts) + '</td></tr>'; }).join('') +
+            '</tbody></table></div></div>';
+        }
+
+        if ((s.licenses || []).length) {
+            html += '<div class="stat-card"><div class="stat-title">Licenças em Finalizar</div>' +
+                barList(s.licenses, function (r) { return licenseName(r.license_id); }) + '</div>';
+        }
+
+        if ((s.empty_terms || []).length) {
+            html += '<div class="stat-card"><div class="stat-title">Buscas sem resultado</div>' +
+                barList(s.empty_terms, function (r) { return r.term; }) +
+                '<p class="hint">É o que o pessoal procurou e não achou. Boas ideias de beat.</p></div>';
+        }
+
+        html += '<p class="hint">Contagem de ações, não de pessoas: a vitrine não usa cookies nem guarda identificador de quem visita.</p>';
+        $('statsBody').innerHTML = html;
+        $('statsBody')._series = series;
+    }
+
+    async function loadStats() {
+        statsLoaded = true;
+        var box = $('statsBody');
+        box.classList.add('loading');
+        var r = await db.rpc('events_summary', { days: STATS_DAYS });
+        box.classList.remove('loading');
+        if (r.error || !r.data) {
+            box.innerHTML = '<div class="empty">Não foi possível carregar o resumo.<br>Rode o SQL <b>migracao_04</b> no Supabase.<br><small>' + esc(r.error ? r.error.message : '') + '</small></div>';
+            return;
+        }
+        renderStats(r.data);
+    }
+
+    $('statsReload').addEventListener('click', loadStats);
+
+    // dica ao passar/tocar numa coluna do grafico
+    function showTip(e) {
+        var col = e.target.closest && e.target.closest('.col');
+        var tip = $('colTip');
+        if (!tip) return;
+        if (!col) { tip.hidden = true; return; }
+        var x = $('statsBody')._series[+col.getAttribute('data-i')];
+        tip.textContent = dayLabel(x.day) + ': ' + x.play + (x.play === 1 ? ' play' : ' plays');
+        tip.hidden = false;
+        var chart = $('colChart'), cr = col.getBoundingClientRect(), pr = chart.getBoundingClientRect();
+        var left = cr.left - pr.left + cr.width / 2;
+        tip.style.left = Math.max(40, Math.min(pr.width - 40, left)) + 'px';
+    }
+    $('statsBody').addEventListener('pointerover', showTip);
+    $('statsBody').addEventListener('pointerdown', showTip);
+    $('statsBody').addEventListener('pointerleave', function () { var tip = $('colTip'); if (tip) tip.hidden = true; });
+
+    // =========================================================
     // PRODUTOR (criar / editar)
     // =========================================================
+    var slugTouched = false;
+
+    // "Alexandre Cunha" vira "alexandre-cunha"
+    function slugify(s) {
+        return norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).replace(/-+$/, '');
+    }
+
+    // aceita "@user", "user" ou o link do perfil; devolve "@user" ('' se vazio)
+    function cleanHandle(v) {
+        v = String(v || '').trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/[\/?#].*$/, '').replace(/^@+/, '');
+        return v ? '@' + v : '';
+    }
+
+    function slugProblem(slug, selfId) {
+        if (!slug) return '';
+        if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return 'Use só letras minúsculas, números e hífen (sem espaço nem acento).';
+        if ((CFG.RESERVED_SLUGS || []).indexOf(slug) > -1) return '"' + slug + '" já é uma página do site. Escolha outro endereço.';
+        for (var i = 0; i < state.producers.length; i++) {
+            if (state.producers[i].slug === slug && state.producers[i].id !== selfId) return 'Esse endereço já é de ' + state.producers[i].name + '.';
+        }
+        return '';
+    }
+
+    function siteBase() { return location.origin + location.pathname.replace(/[^\/]*$/, ''); }
+
+    function updateSlugHint() {
+        var slug = $('pf_slug').value.trim().toLowerCase();
+        var hint = $('pf_slug_hint');
+        var problem = slugProblem(slug, editingProducer ? editingProducer.id : null);
+        if (problem) { hint.className = 'hint warn'; hint.textContent = problem; }
+        else if (slug) { hint.className = 'hint ok'; hint.textContent = 'Link da página: ' + siteBase() + slug + '/'; }
+        else { hint.className = 'hint'; hint.textContent = 'Deixe vazio para o produtor ficar sem página. Cada endereço precisa de uma pasta no site (peça para criar e publicar).'; }
+    }
+
+    $('pf_slug').addEventListener('input', function () { slugTouched = true; updateSlugHint(); });
+    $('pf_name').addEventListener('input', function () {
+        if (slugTouched) return;
+        $('pf_slug').value = slugify(this.value);
+        updateSlugHint();
+    });
+
+    async function pageExists(slug) {
+        try { var r = await fetch(slug + '/', { method: 'HEAD', cache: 'no-store' }); return r.ok; }
+        catch (e) { return true; }     // sem rede, nao alarma
+    }
+
     function openProducerForm(p) {
         editingProducer = p || null;
+        slugTouched = !!(p && p.slug);
         $('producerModalTitle').textContent = p ? 'Editar produtor' : 'Novo produtor';
         $('pf_name').value = p ? p.name : '';
         $('pf_handle').value = p ? (p.handle || '') : '';
+        $('pf_slug').value = p ? (p.slug || '') : '';
+        $('pf_bio').value = p ? (p.bio || '') : '';
+        $('pf_spotify').value = p ? (p.spotify_url || '') : '';
         $('pf_active').checked = p ? !!p.active : true;
         $('pf_photo').value = '';
         $('pf_photo_cur').textContent = p && p.photo_url ? 'Já tem foto. Escolha outra só se quiser trocar.' : '';
         setStatus('pf_status', '');
+        updateSlugHint();
         openModal('producerModal');
     }
 
@@ -271,6 +539,18 @@
         try {
             var id = editingProducer ? editingProducer.id : uuid();
             var photo = editingProducer ? editingProducer.photo_url : null;
+
+            // confere tudo antes de enviar qualquer arquivo
+            var handle = cleanHandle($('pf_handle').value);
+            if (handle && !/^@[A-Za-z0-9._]{1,30}$/.test(handle)) throw new Error('O @ do Instagram só pode ter letras, números, ponto e sublinhado.');
+            var slug = $('pf_slug').value.trim().toLowerCase();
+            var problem = slugProblem(slug, id);
+            if (problem) throw new Error(problem);
+            var bio = $('pf_bio').value.replace(/\s+/g, ' ').trim();
+            if (bio.length > 280) throw new Error('A bio passa de 280 caracteres (' + bio.length + ').');
+            var spotify = $('pf_spotify').value.trim();
+            if (spotify && !/^https:\/\/(open\.)?spotify\.com\//i.test(spotify)) throw new Error('O link do Spotify deve começar com https://open.spotify.com/');
+
             var file = $('pf_photo').files[0];
             if (file) {
                 setStatus('pf_status', 'Enviando foto...');
@@ -278,16 +558,26 @@
                 await upload('avatars', id + '/avatar.jpg', blob, 'image/jpeg');
                 photo = publicUrl('avatars', id + '/avatar.jpg');
             }
-            var handle = $('pf_handle').value.trim();
-            if (handle && handle.charAt(0) !== '@') handle = '@' + handle;
             setStatus('pf_status', 'Salvando...');
-            var r = await db.from('producers').upsert({
+            var row = {
                 id: id, name: $('pf_name').value.trim(), handle: handle || null,
                 photo_url: photo, active: $('pf_active').checked
-            });
+            };
+            var r = await db.from('producers').upsert(Object.assign({}, row, { slug: slug || null, bio: bio || null, spotify_url: spotify || null }));
+            var extrasSkipped = false;
+            if (r.error && /duplicate|unique/i.test(r.error.message || '')) throw new Error('Esse endereço já é de outro produtor.');
+            if (r.error && /could not find|does not exist/i.test(r.error.message || '') && /slug|bio|spotify_url/.test(r.error.message || '')) {
+                // banco ainda sem a migracao 03: salva o resto e avisa
+                extrasSkipped = true;
+                r = await db.from('producers').upsert(row);
+            }
             if (r.error) throw new Error(r.error.message);
+
+            var msg = 'Produtor salvo.';
+            if (extrasSkipped) msg = 'Produtor salvo, mas endereço, bio e Spotify não foram gravados: rode o SQL migracao_03 no Supabase.';
+            else if (slug && !(await pageExists(slug))) msg = 'Produtor salvo, mas a pasta "' + slug + '" ainda não existe no site: peça para criar e publicar.';
             closeModals();
-            toast('Produtor salvo.');
+            toast(msg, msg.length > 20 ? 6000 : 2800);
             await loadAll();
         } catch (err) {
             setStatus('pf_status', err.message, true);
@@ -350,7 +640,15 @@
 
     var titleSuggestion = '';
 
+    $('bf_title').maxLength = TITLE_MAX;
+    $('titleMaxGuide').textContent = TITLE_MAX;
+
     function updateTitleHint() {
+        var len = $('bf_title').value.length;
+        var counter = $('bf_title_count');
+        counter.textContent = len + '/' + TITLE_MAX;
+        counter.className = 'char-count' + (len > TITLE_MAX ? ' over' : len >= TITLE_MAX - 10 ? ' warn' : '');
+
         var title = $('bf_title').value.trim();
         var types = parseList($('bf_types').value, 5);
         var hint = $('bf_title_hint'), btn = $('bf_title_use');
@@ -369,7 +667,7 @@
         }
         if (!hasType) problems.push('Falta "Type Beat" no título (é o que o artista digita na busca).');
         if (hasType && types.length && !cites) problems.push('O título não cita nenhum artista do campo "Type de".');
-        if (title.length > 70) problems.push('Tem ' + title.length + ' caracteres; acima de 70 pode ser cortado nas buscas.');
+        if (title.length > TITLE_MAX) problems.push('Tem ' + title.length + ' caracteres; o limite é ' + TITLE_MAX + '. Encurte para poder salvar.');
 
         if (!problems.length) {
             hint.className = 'hint ok';
@@ -381,10 +679,12 @@
 
         if (!hasType && types.length) {
             var s = types.slice(0, 2).join(' x ') + ' Type Beat - "' + title + '"';
-            if (s.length <= 90) {
+            if (s.length <= TITLE_MAX) {
                 titleSuggestion = s;
                 btn.textContent = 'Usar: ' + s;
                 btn.hidden = false;
+            } else {
+                hint.textContent += ' A sugestão com "Type Beat" passaria de ' + TITLE_MAX + ' caracteres (' + s.length + '): encurte o nome do beat.';
             }
         }
     }
@@ -420,6 +720,8 @@
         var coverF = $('bf_cover').files[0], prevF = $('bf_preview').files[0];
         var mp3F = $('bf_mp3').files[0], wavF = $('bf_wav').files[0], stemsF = $('bf_stems').files[0];
 
+        var titleLen = $('bf_title').value.trim().length;
+        if (titleLen > TITLE_MAX) { setStatus('bf_status', 'O título tem ' + titleLen + ' caracteres; o limite é ' + TITLE_MAX + '. Encurte para salvar.', true); $('bf_title').focus(); return; }
         if (!editingBeat && !prevF) { setStatus('bf_status', 'Falta o preview de 30s com tag.', true); return; }
         if (prevF && prevF.size > LIMIT_PREVIEW) { setStatus('bf_status', 'Preview acima de 15MB. Exporte em MP3 128-192kbps.', true); return; }
         var big = [mp3F, wavF, stemsF].filter(function (x) { return x && x.size > LIMIT_MASTER; })[0];
@@ -474,6 +776,7 @@
                 typesSkipped = true;
                 r1 = await db.from('beats').upsert(row);
             }
+            if (r1.error && /beats_title_len/.test(r1.error.message || '')) throw new Error('O título passa de ' + TITLE_MAX + ' caracteres. Encurte para salvar.');
             if (r1.error) throw new Error(r1.error.message);
 
             var r2 = await db.from('beat_files').upsert({
@@ -576,7 +879,10 @@
         if (tab) {
             var tabs = document.querySelectorAll('.tab');
             for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i] === tab);
-            ['beats', 'producers', 'orders'].forEach(function (n) { $('tab-' + n).hidden = (n !== tab.getAttribute('data-tab')); });
+            var name = tab.getAttribute('data-tab');
+            ['beats', 'producers', 'orders', 'waitlist', 'stats'].forEach(function (n) { $('tab-' + n).hidden = (n !== name); });
+            if (name === 'stats' && !statsLoaded) loadStats();
+            tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });     // a barra de abas rola ate a aba escolhida
             return;
         }
 
@@ -592,6 +898,7 @@
         else if (a === 'edit-producer') openProducerForm(findIn(state.producers, id));
         else if (a === 'delivery') openDelivery(findIn(state.beats, id));
         else if (a === 'delete-beat') deleteBeat(findIn(state.beats, id));
+        else if (a === 'delete-wait') deleteWait(id);
     });
 
     document.addEventListener('change', async function (e) {

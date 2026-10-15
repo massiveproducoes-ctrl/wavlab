@@ -257,6 +257,71 @@ main { max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 16px 24px; 
 
 footer { border-top: 1px solid var(--border-color); text-align: center; padding: 16px; font-size: 11px; color: var(--text-muted); }
 
+/* ---------- Beat em destaque (link ?beat=ID) ---------- */
+.bcard.is-highlight, .brow.is-highlight {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 26px rgba(255, 85, 0, 0.35);
+    animation: hl-pulse 1.2s ease-in-out 3;
+}
+@keyframes hl-pulse { 50% { box-shadow: 0 0 0 7px rgba(255, 85, 0, 0.28), 0 0 34px rgba(255, 85, 0, 0.5); } }
+@media (prefers-reduced-motion: reduce) { .bcard.is-highlight, .brow.is-highlight { animation: none; } }
+
+/* ---------- Em breve no Lab ---------- */
+.soon { margin-top: 32px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; }
+.soon-items { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 18px; }
+.soon-item { display: flex; align-items: flex-start; gap: 14px; }
+.soon-item > i {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px;
+    background: var(--accent-soft); color: var(--accent); font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+}
+.soon-item h4 { font-family: 'Space Grotesk', sans-serif; font-size: 15px; color: #fff; margin-bottom: 2px; }
+.soon-item p { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+.soon-btn {
+    width: 100%; min-height: 48px; border: none; border-radius: 12px; cursor: pointer;
+    background: var(--accent); color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.soon-btn:active { filter: brightness(0.9); }
+.soon-btn.joined { background: #27272a; color: #4ade80; cursor: default; }
+
+.wl-intro { font-size: 13px; color: var(--text-muted); line-height: 1.45; margin-bottom: 14px; }
+.wl-field { margin-bottom: 12px; }
+.wl-field label { display: block; font-size: 12px; font-weight: 600; color: #d4d4d8; margin-bottom: 6px; }
+.wl-field input {
+    width: 100%; background: #18181b; color: #fff; border: 1px solid var(--border-color); border-radius: 12px;
+    padding: 13px 14px; font-size: 16px; /* 16px evita zoom no iPhone */ outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.wl-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.wl-note { font-size: 11px; color: var(--text-muted); line-height: 1.45; margin: 4px 0 14px; }
+.wl-status { font-size: 12px; min-height: 18px; margin-bottom: 8px; color: var(--text-muted); line-height: 1.4; }
+.wl-status.err { color: #f87171; }
+.wl-done { text-align: center; padding: 10px 0 4px; }
+.wl-done i { font-size: 34px; color: #4ade80; margin-bottom: 12px; }
+.wl-done p { font-size: 14px; color: #d4d4d8; line-height: 1.5; margin-bottom: 16px; }
+.wl-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+
+@media (min-width: 768px) {
+    .soon { max-width: 560px; margin: 48px auto 0; }
+}
+
+/* ---------- Quem somos + links do rodape ---------- */
+.about { max-width: 1120px; width: 100%; margin: 0 auto; padding: 0 16px 28px; }
+.about-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; }
+.about-card .section-label { margin-bottom: 8px; }
+.about-card p { font-size: 14px; color: #d4d4d8; line-height: 1.6; max-width: 640px; }
+
+footer { padding: 8px 16px 16px; }
+.footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 22px; }
+.footer-links a {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px;
+    color: #d4d4d8; font-size: 13px; font-weight: 600; text-decoration: none; transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--accent); }
+.footer-links i { font-size: 16px; }
+@media (min-width: 768px) { .about { padding: 0 24px 40px; } }
+
 /* ---------- Mini player ---------- */
 .mini-player {
     position: fixed; left: 0; right: 0; bottom: 0;
@@ -355,6 +420,14 @@ footer { border-top: 1px solid var(--border-color); text-align: center; padding:
 .license-info h5 { font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: #fff; margin-bottom: 2px; }
 .license-info p { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
 .license-price { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; color: var(--accent); flex-shrink: 0; }
+
+.modal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 22px; margin: -4px 0 8px; }
+.license-help, .link-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+    color: var(--text-muted); font-size: 13px; font-weight: 600; text-decoration: none;
+    background: none; border: none; cursor: pointer;
+}
+.license-help:hover, .link-btn:hover { color: var(--accent); }
 
 .checkout-btn {
     width: 100%;

@@ -1,0 +1,66 @@
+/* Wav Lab - pagina do produtor (/slug/), estilo link na bio. Complementa o style.css */
+
+a.brand { text-decoration: none; color: inherit; }
+.brand-name { display: block; }
+
+.back-link {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600; color: var(--text-muted); text-decoration: none;
+    border: 1px solid var(--border-color); border-radius: 20px; padding: 7px 14px;
+    transition: color 0.2s, border-color 0.2s;
+}
+.back-link:hover { color: #fff; border-color: var(--accent); }
+
+.producer-page { max-width: 640px; }
+
+/* ---------- Perfil ---------- */
+.profile { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 14px 0 6px; }
+
+.pf-avatar {
+    width: 112px; height: 112px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+    background: #2a2a30; color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 34px;
+    outline: 2px solid var(--accent); outline-offset: 4px;
+}
+.pf-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.pf-name {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: clamp(28px, 8vw, 36px); line-height: 1.05; letter-spacing: -0.035em;
+    margin-top: 20px; text-wrap: balance; overflow-wrap: anywhere;
+}
+.pf-bio { font-size: 14.5px; color: #d4d4d8; line-height: 1.55; max-width: 440px; margin-top: 10px; overflow-wrap: anywhere; }
+
+.pf-links { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.pf-btn {
+    min-height: 54px; padding: 14px 18px; border-radius: 14px;
+    background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; text-decoration: none;
+    font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: border-color 0.2s, filter 0.2s;
+}
+.pf-btn i { font-size: 20px; }
+.pf-btn:hover { border-color: var(--accent); }
+.pf-btn.primary { background: var(--accent); border-color: var(--accent); }
+.pf-btn.primary:active { filter: brightness(0.9); }
+
+/* carregando */
+.pf-skel { outline-color: var(--border-color); animation: shimmer 1.4s infinite; background: linear-gradient(90deg, #131316 25%, #1b1b1f 50%, #131316 75%); background-size: 200% 100%; }
+.pf-skel-line { width: 220px; max-width: 70%; height: 26px; border-radius: 8px; margin-top: 20px; background: #131316; border: 1px solid var(--border-color); }
+.pf-skel-line.short { width: 140px; height: 14px; margin-top: 12px; }
+
+.pf-beats-label { margin: 30px 0 12px; }
+
+/* nos cards a pessoa ja esta na pagina do produtor: nome e foto repetidos saem */
+body[data-producer] .bprod,
+body[data-producer] .bmeta .avatar,
+body[data-producer] .bmeta .producer-name { display: none; }
+
+body[data-producer] .beat-tag { cursor: default; }
+body[data-producer] span.beat-tag:hover { color: var(--text-muted); border-color: var(--border-color); }
+
+@media (min-width: 768px) {
+    .pf-avatar { width: 128px; height: 128px; font-size: 40px; }
+    .pf-btn { min-height: 56px; }
+}

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produtor | Wav Lab</title>
+    <meta name="description" content="Beats do produtor no Wav Lab. Ouça os previews, escolha a licença e feche direto pelo WhatsApp.">
+    <meta name="theme-color" content="#0b0b0d">
+
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+
+    <!-- Preview do link no WhatsApp / Instagram -->
+    <meta property="og:title" content="Beats do produtor | Wav Lab">
+    <meta property="og:description" content="Ouça o preview, escolha a licença e feche direto pelo WhatsApp.">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:image" content="https://massiveproducoes-ctrl.github.io/wavlab/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../produtor.css">
+</head>
+<!-- data-producer = slug do produtor (tem que ser igual ao nome desta pasta e ao slug no banco) -->
+<body data-producer="faciebat" data-root="../">
+
+    <header>
+        <a class="brand" href="../index.html" aria-label="Wav Lab, ver todos os beats">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24"><path d="M3 18v-6h2v6H3zm4 2V4h2v16H7zm4-4V8h2v8h-2zm4 2v-10h2v10h-2zm4-4v-4h2v4h-2z"/></svg>
+            </div>
+            <span class="brand-name">WAV.<span>LAB</span></span>
+        </a>
+        <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Vitrine</a>
+    </header>
+
+    <main class="producer-page">
+        <!-- Foto, nome, bio e botoes: o app.js preenche com os dados da tabela producers -->
+        <section class="profile" id="profile" aria-live="polite">
+            <div class="pf-avatar pf-skel"></div>
+            <div class="pf-skel-line"></div>
+            <div class="pf-skel-line short"></div>
+        </section>
+
+        <h3 class="section-label pf-beats-label" id="pfBeatsLabel">Beats</h3>
+
+        <div class="toolbar" id="toolbar" hidden>
+            <span class="result-count" id="resultCount"></span>
+            <div class="view-toggle" role="group" aria-label="Modo de visualização">
+                <button type="button" class="view-btn" data-view="grid" aria-label="Ver em grade"><i class="fa-solid fa-table-cells-large"></i></button>
+                <button type="button" class="view-btn" data-view="list" aria-label="Ver em lista"><i class="fa-solid fa-list"></i></button>
+            </div>
+        </div>
+
+        <div class="beats-list is-grid" id="beatsList"></div>
+        <div class="sentinel" id="sentinel" hidden></div>
+    </main>
+
+    <footer id="siteFooter">
+        <p>&copy; 2026 Wav Lab. Todos os direitos reservados.</p>
+    </footer>
+
+    <!-- Mini player fixo -->
+    <div class="mini-player" id="miniPlayer" aria-hidden="true">
+        <div class="mp-progress" id="mpProgress"><div class="mp-progress-fill" id="mpFill"></div></div>
+        <div class="mp-row">
+            <div class="mp-cover" id="mpCover"></div>
+            <div class="mp-info">
+                <div class="mp-title" id="mpTitle">-</div>
+                <div class="mp-time"><span id="mpCurrent">0:00</span> / <span id="mpDuration">0:30</span> <span class="mp-tag">PREVIEW</span></div>
+            </div>
+            <button class="mp-play" id="mpPlay" aria-label="Tocar ou pausar"><i class="fa-solid fa-play"></i></button>
+        </div>
+    </div>
+
+    <!-- Modal de Licenciamento -->
+    <div id="purchaseModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="modalBeatTitle">Licença</h3>
+                    <p class="modal-sub" id="modalSub">Escolha o formato ideal</p>
+                </div>
+                <button class="close-modal" data-close-modal aria-label="Fechar">&times;</button>
+            </div>
+            <p class="modal-note" id="modalNote" hidden></p>
+            <div class="license-options" id="licenseOptions"></div>
+            <ul class="license-notes" id="licenseNotes"></ul>
+            <div class="modal-links">
+                <button type="button" class="link-btn" id="copyLinkBtn"><i class="fa-solid fa-link" aria-hidden="true"></i> Copiar link</button>
+                <a class="license-help" href="../licencas.html" target="_blank" rel="noopener"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Entenda as licenças</a>
+            </div>
+            <a id="whatsappCheckoutBtn" href="#" target="_blank" rel="noopener" class="checkout-btn">
+                <i class="fa-brands fa-whatsapp"></i> Finalizar via Pix (WhatsApp)
+            </a>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="../config.js"></script>
+    <script src="../site.js"></script>
+    <script src="../app.js"></script>
+</body>
+</html>
