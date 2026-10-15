@@ -7,10 +7,18 @@
     <meta name="description" content="Instrumentais exclusivos do Wav Lab. Ouça, escolha a licença e feche pelo WhatsApp.">
     <meta name="theme-color" content="#0b0b0d">
 
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
     <!-- Preview do link no WhatsApp / Instagram -->
     <meta property="og:title" content="Wav Lab | Beats Store">
-    <meta property="og:description" content="Instrumentais exclusivos. Ouça e licencie direto.">
+    <meta property="og:description" content="Instrumentais para o seu próximo lançamento. Ouça o preview, escolha a licença e feche direto pelo WhatsApp.">
     <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:url" content="https://massiveproducoes-ctrl.github.io/wavlab/">
+    <meta property="og:image" content="https://massiveproducoes-ctrl.github.io/wavlab/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,6 +41,15 @@
     <main>
         <h2 class="hero-title">Instrumentais</h2>
         <p class="hero-sub">Previews de 30s. Licenciamento direto para seus lançamentos.</p>
+
+        <!-- Produtores: toque na foto para ver so os beats dele -->
+        <section class="producers" id="producersWrap" hidden>
+            <h3 class="section-label">Produtores</h3>
+            <div class="producers-strip" id="producersStrip"></div>
+        </section>
+
+        <!-- Filtro por genero -->
+        <div class="filters" id="genreFilters" hidden></div>
 
         <!-- Os beats sao desenhados pelo app.js a partir do banco de dados -->
         <div class="beats-list" id="beatsList"></div>
@@ -72,6 +89,7 @@
                 <button class="close-modal" data-close-modal aria-label="Fechar">&times;</button>
             </div>
             <div class="license-options" id="licenseOptions"></div>
+            <ul class="license-notes" id="licenseNotes"></ul>
             <a id="whatsappCheckoutBtn" href="#" target="_blank" rel="noopener" class="checkout-btn">
                 <i class="fa-brands fa-whatsapp"></i> Finalizar via Pix (WhatsApp)
             </a>

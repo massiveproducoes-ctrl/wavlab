@@ -71,8 +71,8 @@
             note: r.note,
             cover: r.cover_url,
             audio: r.preview_url,
-            producer: { name: p.name || 'Wav Lab', handle: p.handle, photo: p.photo_url },
-            genre: { name: g.name || 'Outro', color: safeColor(g.color) }
+            producer: { id: p.id || 'wavlab', name: p.name || 'Wav Lab', handle: p.handle, photo: p.photo_url },
+            genre: { id: g.id || 'outro', name: g.name || 'Outro', color: safeColor(g.color), sort: g.sort == null ? 100 : g.sort }
         };
     }
 
@@ -82,7 +82,7 @@
         if (!db) db = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY);
 
         db.from('beats')
-            .select('id,title,bpm,musical_key,tags,note,cover_url,preview_url,created_at,producers(id,name,handle,photo_url),genres(id,name,color)')
+            .select('id,title,bpm,musical_key,tags,note,cover_url,preview_url,created_at,producers(id,name,handle,photo_url),genres(id,name,color,sort)')
             .eq('published', true)
             .order('created_at', { ascending: false })
             .then(function (res) {
@@ -106,7 +106,58 @@
             'Confira sua conexão e tente de novo.<br><button data-retry>Tentar de novo</button></div>';
     }
 
+    // ---------- filtros ----------
+    var filter = { genre: null, producer: null };
+
+    function matchesFilter(b) {
+        return (!filter.genre || b.genre.id === filter.genre) &&
+               (!filter.producer || b.producer.id === filter.producer);
+    }
+
+    function renderFilters() {
+        var genres = {}, producers = {}, gList = [], pList = [];
+
+        BEATS.forEach(function (b) {
+            if (!genres[b.genre.id]) { genres[b.genre.id] = { g: b.genre, n: 0 }; gList.push(genres[b.genre.id]); }
+            genres[b.genre.id].n++;
+            if (!producers[b.producer.id]) { producers[b.producer.id] = { p: b.producer, n: 0 }; pList.push(producers[b.producer.id]); }
+            producers[b.producer.id].n++;
+        });
+
+        // produtores: so aparece se tiver mais de um com beats
+        if (pList.length < 2) {
+            $('producersWrap').hidden = true;
+        } else {
+            $('producersWrap').hidden = false;
+            $('producersStrip').innerHTML = pList.map(function (x) {
+                var on = filter.producer === x.p.id;
+                var dim = filter.producer && !on;
+                return '<button class="prod-item' + (on ? ' active' : '') + (dim ? ' dim' : '') + '" data-filter-producer="' + esc(x.p.id) + '">' +
+                    '<span class="prod-avatar">' + (x.p.photo ? '<img src="' + esc(x.p.photo) + '" alt="" loading="lazy">' : esc(initials(x.p.name))) + '</span>' +
+                    '<span class="prod-name">' + esc(x.p.name) + '</span>' +
+                    '<span class="prod-count">' + x.n + ' beat' + (x.n === 1 ? '' : 's') + '</span>' +
+                '</button>';
+            }).join('');
+        }
+
+        // generos: so aparece se tiver mais de um
+        if (gList.length < 2) {
+            $('genreFilters').hidden = true;
+        } else {
+            gList.sort(function (a, b) { return a.g.sort - b.g.sort; });
+            $('genreFilters').hidden = false;
+            $('genreFilters').innerHTML =
+                '<button class="chip chip-all' + (!filter.genre ? ' active' : '') + '" data-filter-genre="">Todos <span>' + BEATS.length + '</span></button>' +
+                gList.map(function (x) {
+                    return '<button class="chip' + (filter.genre === x.g.id ? ' active' : '') + '" style="--g:' + x.g.color + '" data-filter-genre="' + esc(x.g.id) + '">' +
+                        esc(x.g.name) + ' <span>' + x.n + '</span></button>';
+                }).join('');
+        }
+    }
+
     function renderBeats() {
+        renderFilters();
+
         if (!BEATS.length) {
             $('beatsList').innerHTML =
                 '<div class="state-box"><strong>Novos beats chegando</strong>' +
@@ -114,7 +165,15 @@
             return;
         }
 
-        $('beatsList').innerHTML = BEATS.map(function (b) {
+        var list = BEATS.filter(matchesFilter);
+        if (!list.length) {
+            $('beatsList').innerHTML =
+                '<div class="state-box"><strong>Nenhum beat com esse filtro</strong>' +
+                'Tente outro gênero ou produtor.<br><button data-clear-filters>Limpar filtros</button></div>';
+            return;
+        }
+
+        $('beatsList').innerHTML = list.map(function (b) {
             var tags = b.tags.map(function (t) { return '<span class="beat-tag">' + esc(t) + '</span>'; }).join('');
             var info = [];
             if (b.bpm) info.push(esc(b.bpm) + ' BPM');
@@ -144,6 +203,9 @@
                     : '') +
             '</div>';
         }).join('');
+
+        // mantem o estado de "tocando" ao trocar de filtro
+        if (playingId) syncIcons(audio.paused ? 'play' : 'pause');
     }
 
     // =========================================================
@@ -163,6 +225,7 @@
                     '<div class="license-info"><h5>' + esc(lic.name) + '</h5><p>' + esc(lic.desc) + '</p></div>' +
                 '</div>' +
                 '<span class="license-price">' + brl(lic.price) + '</span>' +
+                '<ul class="license-terms">' + (lic.terms || []).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' +
             '</label>';
         }).join('');
     }
@@ -179,6 +242,9 @@
         if (!currentBeat) return;
         selectedLicense = LICENSES[0];
         $('modalBeatTitle').textContent = currentBeat.title;
+        $('licenseNotes').innerHTML = (CFG.COMMON_TERMS || []).map(function (t) {
+            return '<li>' + esc(t.replace('nome do produtor', currentBeat.producer.name)) + '</li>';
+        }).join('');
         renderLicenses();
         updateCheckoutLink();
         modal.classList.add('active');
@@ -326,6 +392,19 @@
     // =========================================================
     document.addEventListener('click', function (e) {
         if (e.target.closest('[data-retry]')) { loadBeats(); return; }
+
+        var fg = e.target.closest('[data-filter-genre]');
+        if (fg) { filter.genre = fg.getAttribute('data-filter-genre') || null; renderBeats(); return; }
+
+        var fp = e.target.closest('[data-filter-producer]');
+        if (fp) {
+            var pid = fp.getAttribute('data-filter-producer');
+            filter.producer = (filter.producer === pid) ? null : pid;   // tocar de novo desmarca
+            renderBeats();
+            return;
+        }
+
+        if (e.target.closest('[data-clear-filters]')) { filter.genre = null; filter.producer = null; renderBeats(); return; }
 
         var buy = e.target.closest('[data-buy]');
         if (buy) { openModal(buy.getAttribute('data-buy')); return; }
