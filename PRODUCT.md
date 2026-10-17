@@ -46,7 +46,7 @@ Não é um supermercado de beats nem um marketplace anônimo. Cada produção sa
 - Quatro produtores reais com página própria (`alexandre/`, `drin/`, `faciebat/`, `felipe/`) e catálogo no Supabase.
 - Texto "Quem somos" e blocos de licenças em `config.js`.
 - Não há depoimentos, números de vendas nem logos de clientes; nada disso deve ser inventado.
-- O Instagram do rodapé (`instagram.com/wavlab`) é provisório.
+- O Instagram oficial do estúdio é o @wavlab.studio (`instagram.com/wavlab.studio`), usado no rodapé.
 
 ## Product Principles
 

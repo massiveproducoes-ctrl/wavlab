@@ -15,8 +15,8 @@ window.WAVLAB = {
     TITLE_MAX: 70,
 
     // Instagram do rodape (endereco completo, comecando com https://).
-    // PROVISORIO: troque pelo perfil real. Deixe '' para esconder o link.
-    INSTAGRAM: 'https://instagram.com/wavlab',
+    // Perfil oficial: @wavlab.studio. Deixe '' para esconder o link.
+    INSTAGRAM: 'https://www.instagram.com/wavlab.studio/',
 
     // Bloco "Quem somos" (acima do rodape). TEXTO PROVISORIO.
     ABOUT_TITLE: 'Quem somos',
