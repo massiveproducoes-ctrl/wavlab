@@ -60,7 +60,7 @@ Valores hoje em `style.css`, que podem ser reescritos seguindo este documento:
 | Borda | `#27272a` |
 | Destaque | `#ff5500` (laranja saturado; candidato a refino) |
 | Texto / texto suave | `#f4f4f5` / `#a1a1aa` |
-| Fontes | Inter (corpo) e Space Grotesk (títulos) |
+| Fontes | **Instrument Sans** (texto, títulos e interface, pesos 400 a 700) e **DM Mono** (dados: BPM, tom, preço, tempo; 400 e 500). Escolhidas em out/2026, no lugar de Inter + Space Grotesk |
 | Capa sem imagem | gradiente com a cor do gênero (candidato a simplificar) |
 
 ## Princípios de aplicação

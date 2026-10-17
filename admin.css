@@ -11,7 +11,7 @@
 /* ---------- Botoes ---------- */
 .btn {
     border: none; border-radius: 12px; padding: 13px 16px;
-    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px;
+    font-family: var(--font-ui); font-weight: 700; font-size: 14px;
     cursor: pointer; color: #fff; background: #27272a;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
@@ -47,11 +47,11 @@
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 .group-title {
-    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700;
+    font-family: var(--font-ui); font-size: 12px; font-weight: 700;
     color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px;
     margin: 22px 0 12px; padding-top: 14px; border-top: 1px solid var(--border-color);
 }
-.hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+.hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
 .hint.warn { color: #fbbf24; }
 .hint.ok { color: #4ade80; }
 
@@ -81,16 +81,16 @@
     position: relative; width: 56px; height: 56px; border-radius: 12px; flex-shrink: 0; overflow: hidden;
     background: linear-gradient(135deg, #1b1b1f, var(--g));
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: rgba(255,255,255,0.9);
+    font-family: var(--font-ui); font-weight: 700; color: rgba(255,255,255,0.9);
 }
 .thumb.round { border-radius: 50%; }
 .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .item-info { min-width: 0; flex: 1; }
-.item-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-title { font-family: var(--font-ui); font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 .badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
-.badge { font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: #1f1f23; color: var(--text-muted); border: 1px solid var(--border-color); }
+.badge { font-size: 12px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: #1f1f23; color: var(--text-muted); border: 1px solid var(--border-color); }
 .badge.on { color: #4ade80; border-color: rgba(74, 222, 128, 0.35); background: rgba(74, 222, 128, 0.08); }
 
 .item-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
@@ -106,7 +106,7 @@
 .empty { text-align: center; padding: 28px 16px; color: var(--text-muted); font-size: 13px; border: 1px dashed var(--border-color); border-radius: 16px; }
 
 /* Pedidos */
-.order-price { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: var(--accent); }
+.order-price { font-family: var(--font-ui); font-weight: 700; color: var(--accent); }
 .order select { background: #18181b; color: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; font-size: 14px; }
 
 /* Titulo / SEO */
@@ -124,30 +124,30 @@
 
 /* ---------- Lista de espera + Resumo ---------- */
 .list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; min-height: 36px; }
-.list-count { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; }
+.list-count { font-family: var(--font-ui); font-weight: 700; font-size: 14px; }
 .stats-body { transition: opacity 0.2s; }
 .stats-body.loading { opacity: 0.5; }
 
 .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
 .kpi { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 12px; }
-.kpi-label { font-size: 11px; color: var(--text-muted); line-height: 1.3; min-height: 28px; }
-.kpi-val { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 28px; color: #fff; margin-top: 4px; }
+.kpi-label { font-size: 12px; color: var(--text-muted); line-height: 1.3; min-height: 28px; }
+.kpi-val { font-family: var(--font-ui); font-weight: 700; font-size: 28px; color: #fff; margin-top: 4px; }
 
 .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 16px; margin-top: 12px; }
-.stat-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 13px; color: #fff; margin-bottom: 12px; }
+.stat-title { font-family: var(--font-ui); font-weight: 700; font-size: 13px; color: #fff; margin-bottom: 12px; }
 
 /* grafico de colunas: uma serie so, colunas finas com ponta arredondada, vao entre elas */
 .col-chart { position: relative; height: 120px; display: flex; align-items: flex-end; gap: 2px; padding-top: 16px; border-bottom: 1px solid var(--border-color); }
 .col { flex: 1 1 0; max-width: 24px; height: 100%; display: flex; align-items: flex-end; }
 .col-fill { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; transition: filter 0.15s; }
 .col:hover .col-fill { filter: brightness(1.3); }
-.col-max { position: absolute; top: 0; left: 0; font-size: 10px; color: var(--text-muted); }
+.col-max { position: absolute; top: 0; left: 0; font-size: 12px; color: var(--text-muted); }
 .col-tip {
     position: absolute; top: -8px; transform: translate(-50%, -100%);
-    background: #27272a; color: #fff; font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 8px;
+    background: #27272a; color: #fff; font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 8px;
     white-space: nowrap; pointer-events: none; z-index: 2;
 }
-.col-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+.col-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 
 .rank { list-style: none; }
 .rank li { display: grid; grid-template-columns: minmax(70px, 38%) 1fr auto; align-items: center; gap: 10px; padding: 5px 0; font-size: 12.5px; }
@@ -169,3 +169,6 @@
 
 /* o atributo hidden precisa vencer o display dos botoes e secoes */
 [hidden] { display: none !important; }
+
+/* números e preços em fonte de dados */
+.order-price, .kpi-val { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; }

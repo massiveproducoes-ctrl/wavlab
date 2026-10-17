@@ -480,7 +480,7 @@
                 '</div>' +
                 (tags ? '<div class="brow-tags">' + tags + '</div>' : '') +
                 (b.note ? '<p class="bnote" title="' + esc(b.note) + '">' + esc(b.note) + '</p>' : '') +
-                '<button class="buy-btn" data-buy="' + esc(b.id) + '"><span class="buy-label">Licenciar &middot; </span>' + brl(minPrice) + '</button>' +
+                '<button class="buy-btn" data-buy="' + esc(b.id) + '"><span class="buy-label">Licenciar &middot; </span><span class="price">' + brl(minPrice) + '</span></button>' +
             '</article>';
         }
 
@@ -491,7 +491,7 @@
                 '<h3 class="btitle" title="' + esc(b.title) + '">' + esc(b.title) + '</h3>' +
                 prod +
                 '<div class="bmeta">' + pill + (infoTxt ? '<span class="binfo">' + infoTxt + '</span>' : '') + '</div>' +
-                '<button class="buy-btn" data-buy="' + esc(b.id) + '">Licenciar &middot; ' + brl(minPrice) + '</button>' +
+                '<button class="buy-btn" data-buy="' + esc(b.id) + '">Licenciar &middot; <span class="price">' + brl(minPrice) + '</span></button>' +
             '</div>' +
         '</article>';
     }
