@@ -15,6 +15,8 @@ Loja de beats (instrumentais) com vitrine pública e painel admin. Site estátic
 5. **Commits sempre com o e-mail noreply do GitHub já configurado neste repositório** (`git config user.email` dentro desta pasta). Não use o e-mail pessoal, não mude `user.email` (nem global nem local) e não use `--author` com outro e-mail. Se `git config user.email` mostrar algo que não termine em `@users.noreply.github.com`, pare e pergunte.
 6. **Publicar só quando o usuário pedir.** "Publicar" é `git commit` + `git push origin main`. Nunca faça commit ou push por iniciativa própria. Termine o trabalho, mostre o `git status` e o `git diff --stat`, e pergunte se pode publicar.
 
+7. **A stack é fixa: HTML, CSS e JavaScript puro, sem frameworks.** Nenhuma melhoria de design pode quebrar busca, filtros, player, modal de compra, admin ou páginas de produtor. Depois de qualquer mudança visual, teste todos eles (ver "Como testar").
+
 ## Arquivos
 
 | Arquivo | Para que serve |
@@ -40,7 +42,7 @@ Os scripts são carregados na ordem: `supabase-js` (CDN jsDelivr, versão fixa) 
 - Lê `beats` do Supabase com o `producers` e o `genres` embutidos (só `published = true`, mais novos primeiro) usando a chave `anon`.
 - **Busca por type beat:** o texto é normalizado (minúsculo, sem acento) e as palavras "type", "beat", "instrumental" etc. são ignoradas (`STOP`). Cada palavra precisa aparecer em título, produtor, gênero, tags ou `type_artists`. A ordem de relevância é type > título > tag > resto. O termo buscado também vai para a URL (`?q=drake`).
 - **Rolagem infinita:** lotes de `BATCH` (24) beats liberados por um `IntersectionObserver` no elemento `#sentinel`. Sem o observer, mostra tudo de uma vez.
-- **Grade/lista:** escolha salva em `localStorage` (`wavlab_view`). O padrão é grade em tela larga e lista no celular.
+- **Grade/lista:** escolha salva em `localStorage` (`wavlab_view`). O padrão é a lista (linha de faixa) em qualquer tela; em lista com 720 px ou mais ela vira colunas alinhadas, por container query.
 - **Filtros:** gêneros e produtores só aparecem se houver mais de um. Os atalhos de busca (chips) vêm dos types e tags mais usados.
 - **Player:** um único `Audio` para a página toda, cortado em `PREVIEW_SECONDS`.
 - **Compra:** o modal mostra as licenças de `config.js`. O botão abre o WhatsApp (`wa.me/<WHATSAPP>`) com a mensagem pronta e grava um *lead* em `orders` com o texto exato da licença (`terms_snapshot`). O pagamento é por Pix, combinado no WhatsApp. Não existe checkout automático.

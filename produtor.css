@@ -42,7 +42,7 @@ a.brand { text-decoration: none; color: inherit; }
 }
 .pf-btn i { font-size: 20px; }
 .pf-btn:hover { border-color: var(--accent); }
-.pf-btn.primary { background: var(--accent); border-color: var(--accent); }
+.pf-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .pf-btn.primary:active { filter: brightness(0.9); }
 
 /* carregando */

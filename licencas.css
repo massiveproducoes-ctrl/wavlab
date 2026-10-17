@@ -59,7 +59,7 @@ a.brand { text-decoration: none; color: inherit; }
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 .lp-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.lp-input::placeholder { color: #71717a; }
+.lp-input::placeholder { color: #8a8a93; }
 
 .credit-out {
     display: flex; align-items: center; gap: 10px;
@@ -71,7 +71,7 @@ a.brand { text-decoration: none; color: inherit; }
 }
 .copy-btn {
     flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; min-height: 44px;
-    background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0 16px;
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 10px; padding: 0 16px;
     font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .copy-btn:active { filter: brightness(0.9); }
@@ -98,7 +98,7 @@ a.brand { text-decoration: none; color: inherit; }
     font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.cta-primary { background: var(--accent); color: #fff; }
+.cta-primary { background: var(--accent); color: var(--on-accent); }
 .cta-primary:active { filter: brightness(0.9); }
 .cta-ghost { border: 1px solid var(--border-color); color: #fff; transition: border-color 0.2s; }
 .cta-ghost:hover { border-color: var(--accent); }

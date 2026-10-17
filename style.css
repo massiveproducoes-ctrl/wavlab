@@ -6,6 +6,7 @@
     --accent-soft: rgba(255, 85, 0, 0.12);
     --text-main: #f4f4f5;
     --text-muted: #a1a1aa;
+    --on-accent: #0b0b0d; /* texto sobre o laranja: o branco dá só 3,2:1 */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
@@ -56,7 +57,7 @@ header {
 .brand-name span { color: var(--accent); }
 
 .beta-badge {
-    font-size: 11px; font-weight: 600;
+    font-size: 12px; font-weight: 600;
     background-color: var(--accent-soft);
     color: var(--accent);
     border: 1px solid rgba(255, 85, 0, 0.2);
@@ -87,7 +88,7 @@ main { max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 16px 24px; 
     font-size: 16px; /* 16px evita zoom no iPhone */
     padding: 16px 46px 16px 44px; -webkit-appearance: none; appearance: none;
 }
-.search input::placeholder { color: #71717a; }
+.search input::placeholder { color: #8a8a93; }
 .search input::-webkit-search-cancel-button { display: none; }
 .search-clear {
     position: absolute; right: 6px; width: 36px; height: 36px; border: none; border-radius: 50%;
@@ -121,8 +122,8 @@ main { max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 16px 24px; 
 /* ---------- Genero (tag colorida) ---------- */
 .genre-pill {
     --g: #ff5500;
-    display: inline-flex; align-items: center;
-    font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+    display: inline-flex; align-items: center; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
     color: var(--g);
     background: rgba(255, 255, 255, 0.04);
     background: color-mix(in srgb, var(--g) 14%, transparent);
@@ -160,31 +161,35 @@ main { max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 16px 24px; 
     overflow-wrap: anywhere;
 }
 .avatar {
-    width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
     background: #2a2a30;
     display: flex; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 700; color: var(--text-muted);
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .producer-name { font-size: 12.5px; color: #d4d4d8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .bprod { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .bmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
-.binfo { font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.binfo { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .beat-tag {
-    font-size: 10px; font-weight: 600; color: var(--text-muted);
+    font-size: 12px; font-weight: 600; color: var(--text-muted);
     background: none; border: 1px solid var(--border-color);
     padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap;
     transition: color 0.2s, border-color 0.2s;
 }
 .beat-tag:hover { color: #fff; border-color: var(--accent); }
 
+/* Licenciar: botão secundário. O laranja fica para o play ativo e para o checkout do modal. */
 .buy-btn {
-    background-color: var(--accent); color: #fff; border: none;
-    font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700;
-    padding: 11px 16px; border-radius: 11px; cursor: pointer; white-space: nowrap;
+    background-color: transparent; color: var(--text-main); border: 1px solid #3f3f46;
+    font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600;
+    min-height: 44px; padding: 10px 16px; border-radius: 11px; cursor: pointer; white-space: nowrap;
+    transition: border-color 0.2s, background-color 0.2s;
 }
-.buy-btn:active { filter: brightness(0.9); }
+.buy-btn:hover { border-color: #71717a; background-color: rgba(255, 255, 255, 0.04); }
+.buy-btn:active { background-color: rgba(255, 255, 255, 0.08); }
+.buy-btn:focus-visible, .beat-tag:focus-visible, .play-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- Grade ---------- */
 .bcard {
@@ -200,23 +205,97 @@ main { max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 16px 24px; 
 .bcard .buy-btn { width: 100%; margin-top: 2px; }
 
 /* ---------- Lista ---------- */
+/* Linha de faixa. Celular: capa | título, produtor, dados e tags | preço.
+   Largura de lista >= 720px: colunas alinhadas (título+tags, produtor, BPM, tom, gênero, preço).
+   A largura é a da própria lista (container query), então a página do produtor (640px) fica no layout de celular. */
+.beats-list.is-list { container-type: inline-size; }
+
 .brow {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 10px 8px 8px;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    grid-template-areas:
+        "cover title buy"
+        "cover prod  buy"
+        "cover facts buy"
+        "cover tags  tags"
+        "cover note  note";
+    column-gap: 12px; row-gap: 0;
+    align-items: center;
+    padding: 10px 12px 10px 10px;
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 14px;
     transition: border-color 0.2s;
 }
-.brow .bcover { width: 56px; height: 56px; border-radius: 10px; flex-shrink: 0; font-size: 16px; }
+.brow .bcover { grid-area: cover; align-self: start; width: 56px; height: 56px; border-radius: 10px; font-size: 16px; }
 .brow .play-btn { font-size: 16px; }
-.brow-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.brow .btitle { -webkit-line-clamp: 2; font-size: 14.5px; }
-.brow-tags { display: none; gap: 5px; flex-shrink: 0; }
-.brow .buy-btn { flex-shrink: 0; padding: 10px 14px; }
+.brow .btitle { grid-area: title; -webkit-line-clamp: 2; font-size: 15px; }
+.brow .bprod { grid-area: prod; gap: 9px; margin-top: 6px; }
+.brow .avatar { width: 32px; height: 32px; font-size: 12px; }
+.brow .producer-name { font-size: 13.5px; font-weight: 600; color: var(--text-main); }
+/* nota do autor: uma linha, sempre ligada ao produtor */
+.bnote {
+    grid-area: note; margin-top: 7px; min-width: 0;
+    font-size: 12.5px; line-height: 1.45; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bnote::before { content: '\201C'; } .bnote::after { content: '\201D'; }
+.brow-facts { grid-area: facts; margin-top: 7px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.brow .binfo { font-size: 13px; color: #d4d4d8; }
+.binfo-bpm + .binfo-key::before { content: '\00b7'; margin-right: 8px; color: var(--text-muted); }
+.brow-tags { grid-area: tags; margin-top: 7px; display: flex; gap: 6px; min-width: 0; }
+.brow-tags .beat-tag:nth-child(n+3) { display: none; }
+.brow .beat-tag { position: relative; display: inline-flex; min-width: 0; max-width: 100%; font-size: 12px; }
+.brow .beat-tag > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brow .beat-tag::after { content: ''; position: absolute; inset: -9px -3px; } /* área de toque maior que a marca */
+.brow .buy-btn { grid-area: buy; align-self: center; padding: 10px 14px; }
 .buy-label { display: none; }
 
+/* lista muito estreita (zoom alto): o preço desce para o fim do bloco, em vez de brigar por espaço */
+@container (max-width: 279px) {
+    .brow {
+        grid-template-columns: 56px minmax(0, 1fr);
+        grid-template-areas:
+            "cover title"
+            "cover prod"
+            "cover facts"
+            "cover tags"
+            "cover note"
+            "buy   buy";
+        row-gap: 0;
+    }
+    .brow .buy-btn { justify-self: stretch; margin-top: 10px; }
+}
+
+@container (min-width: 720px) {
+    .brow {
+        grid-template-columns: 60px minmax(0, 1fr) minmax(230px, 0.85fr) 76px 44px 108px 152px;
+        grid-template-areas:
+            "cover title prod bpm key genre buy"
+            "cover tags  note bpm key genre buy";
+        column-gap: 16px; row-gap: 3px;
+        padding: 10px 16px 10px 10px;
+    }
+    .brow .bcover { align-self: center; width: 60px; height: 60px; }
+    .brow .btitle { -webkit-line-clamp: 1; align-self: end; }
+    .brow.no-tags .btitle { grid-row: 1 / 3; align-self: center; }
+    .brow .bprod { margin-top: 0; align-self: end; }
+    .brow.no-note .bprod { grid-row: 1 / 3; align-self: center; }
+    .bnote { margin-top: 0; align-self: start; padding-left: 41px; } /* alinha com o nome, depois do avatar */
+    .brow-facts { display: contents; }
+    .brow .binfo-bpm { grid-area: bpm; }
+    .brow .binfo-key { grid-area: key; }
+    .binfo-bpm + .binfo-key::before { content: none; }
+    .brow .genre-pill { grid-area: genre; justify-self: start; }
+    .brow .binfo { align-self: center; }
+    .brow-tags { margin-top: 0; align-self: start; }
+    .brow-tags .beat-tag:nth-child(n+3) { display: inline-block; }
+    .brow .buy-btn { justify-self: end; }
+    .buy-label { display: inline; }
+}
+
 .bcard.is-active, .brow.is-active { border-color: rgba(255, 85, 0, 0.55); }
+.bcard.is-active .play-btn, .brow.is-active .play-btn { background: rgba(255, 85, 0, 0.82); }
 
 /* ---------- Estados ---------- */
 .skeleton {
@@ -227,6 +306,8 @@ main { max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 16px 24px; 
     border: 1px solid var(--border-color);
 }
 .is-grid .skeleton { height: auto; aspect-ratio: 3 / 4; border-radius: 16px; }
+.is-list .skeleton { height: 108px; }
+@container (min-width: 720px) { .is-list .skeleton { height: 82px; } }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
 .state-box {
@@ -250,12 +331,12 @@ main { max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 16px 24px; 
 .creator-banner h4 { font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #ffaa80; margin-bottom: 6px; }
 .creator-banner p { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4; }
 .creator-tag {
-    font-size: 11px; font-weight: 600;
+    font-size: 12px; font-weight: 600;
     background-color: var(--accent-soft); color: var(--accent);
     padding: 5px 12px; border-radius: 6px; display: inline-block;
 }
 
-footer { border-top: 1px solid var(--border-color); text-align: center; padding: 16px; font-size: 11px; color: var(--text-muted); }
+footer { border-top: 1px solid var(--border-color); text-align: center; padding: 16px; font-size: 12px; color: var(--text-muted); }
 
 /* ---------- Beat em destaque (link ?beat=ID) ---------- */
 .bcard.is-highlight, .brow.is-highlight {
@@ -279,7 +360,7 @@ footer { border-top: 1px solid var(--border-color); text-align: center; padding:
 .soon-item p { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
 .soon-btn {
     width: 100%; min-height: 48px; border: none; border-radius: 12px; cursor: pointer;
-    background: var(--accent); color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700;
+    background: var(--accent); color: var(--on-accent); font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .soon-btn:active { filter: brightness(0.9); }
@@ -294,7 +375,7 @@ footer { border-top: 1px solid var(--border-color); text-align: center; padding:
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 .wl-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.wl-note { font-size: 11px; color: var(--text-muted); line-height: 1.45; margin: 4px 0 14px; }
+.wl-note { font-size: 12px; color: var(--text-muted); line-height: 1.45; margin: 4px 0 14px; }
 .wl-status { font-size: 12px; min-height: 18px; margin-bottom: 8px; color: var(--text-muted); line-height: 1.4; }
 .wl-status.err { color: #f87171; }
 .wl-done { text-align: center; padding: 10px 0 4px; }
@@ -355,16 +436,16 @@ footer { padding: 8px 16px 16px; }
     font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.mp-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.mp-time { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .mp-tag {
-    margin-left: 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+    margin-left: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
     color: var(--accent); background: var(--accent-soft);
     padding: 2px 5px; border-radius: 4px;
 }
 
 .mp-play {
     width: 44px; height: 44px; border-radius: 50%;
-    border: none; background: var(--accent); color: #fff;
+    border: none; background: var(--accent); color: var(--on-accent);
     font-size: 15px; cursor: pointer; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
 }
@@ -397,7 +478,7 @@ footer { padding: 8px 16px 16px; }
     margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;
 }
 .modal-title { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700; }
-.modal-sub { font-size: 11px; color: var(--text-muted); }
+.modal-sub { font-size: 12px; color: var(--text-muted); }
 
 .close-modal {
     background: none; border: none; color: var(--text-muted);
@@ -418,7 +499,7 @@ footer { padding: 8px 16px 16px; }
 
 .license-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .license-info h5 { font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: #fff; margin-bottom: 2px; }
-.license-info p { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+.license-info p { font-size: 12px; color: var(--text-muted); line-height: 1.3; }
 .license-price { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; color: var(--accent); flex-shrink: 0; }
 
 .modal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 22px; margin: -4px 0 8px; }
@@ -431,7 +512,7 @@ footer { padding: 8px 16px 16px; }
 
 .checkout-btn {
     width: 100%;
-    background-color: var(--accent); color: #fff;
+    background-color: var(--accent); color: var(--on-accent);
     border-radius: 12px; padding: 14px;
     font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px;
     display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -490,7 +571,7 @@ footer { padding: 8px 16px 16px; }
 .prod-item.active .prod-avatar { outline-color: var(--accent); }
 
 .prod-name { font-size: 12px; font-weight: 600; max-width: 78px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prod-count { font-size: 10px; color: var(--text-muted); margin-top: -4px; }
+.prod-count { font-size: 12px; color: var(--text-muted); margin-top: -4px; }
 
 /* ---------- Filtro de genero ---------- */
 .filters {
@@ -510,7 +591,7 @@ footer { padding: 8px 16px 16px; }
 }
 .chip::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--g); }
 .chip.chip-all::before { display: none; }
-.chip span { font-size: 11px; opacity: 0.65; font-variant-numeric: tabular-nums; }
+.chip span { font-size: 12px; opacity: 0.65; font-variant-numeric: tabular-nums; }
 .chip.active {
     color: #fff; border-color: var(--g);
     background: rgba(255, 255, 255, 0.08);
@@ -532,7 +613,7 @@ footer { padding: 8px 16px 16px; }
 .license-terms li::before { content: '\2713'; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
 
 .license-notes {
-    font-size: 11px; color: var(--text-muted); line-height: 1.5;
+    font-size: 12px; color: var(--text-muted); line-height: 1.5;
     border: 1px dashed var(--border-color); border-radius: 10px;
     padding: 10px 12px; margin: -6px 0 16px;
     list-style: none;
@@ -567,17 +648,12 @@ footer { padding: 8px 16px 16px; }
     main { padding: 28px 24px 64px; }
     .hero { padding: 14px 0 22px; }
     .hero-title { font-size: clamp(34px, 5vw, 46px); }
-    .brow .btitle { -webkit-line-clamp: 1; }
     .hero-sub { font-size: 16px; margin-bottom: 26px; }
     .search input { padding: 18px 50px 18px 48px; }
     .search > i { left: 18px; }
     .beats-list.is-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
     .bbody { padding: 14px; }
     .btitle { font-size: 15px; }
-    .brow { gap: 16px; padding: 10px 14px 10px 10px; }
-    .brow .bcover { width: 60px; height: 60px; }
-    .brow-tags { display: flex; }
-    .buy-label { display: inline; }
     .producers { margin-bottom: 20px; }
     .prod-avatar { width: 54px; height: 54px; font-size: 16px; }
     .prod-count { display: block; }

@@ -108,7 +108,7 @@
     var filter = { genre: null, producer: null, q: '' };
     var view = lsGet('wavlab_view');
     if (view !== 'grid' && view !== 'list') {
-        view = (window.matchMedia && window.matchMedia('(min-width: 768px)').matches) ? 'grid' : 'list';
+        view = 'list';
     }
     var current = [];   // beats que passam na busca + filtros
     var shown = 0;      // quantos ja foram desenhados (rolagem infinita)
@@ -420,20 +420,21 @@
         if (view === 'list') {
             var tags = b.types.concat(b.tags).slice(0, 3).map(function (t) {
                 return SEARCH_ON
-                    ? '<button type="button" class="beat-tag" data-term="' + esc(t) + '">' + esc(t) + '</button>'
-                    : '<span class="beat-tag">' + esc(t) + '</span>';
+                    ? '<button type="button" class="beat-tag" data-term="' + esc(t) + '" title="' + esc(t) + '"><span>' + esc(t) + '</span></button>'
+                    : '<span class="beat-tag" title="' + esc(t) + '"><span>' + esc(t) + '</span></span>';
             }).join('');
             return '' +
-            '<article class="brow" data-card="' + esc(b.id) + '">' +
+            '<article class="brow' + (tags ? '' : ' no-tags') + (b.note ? '' : ' no-note') + '" data-card="' + esc(b.id) + '">' +
                 cover +
-                '<div class="brow-main">' +
-                    '<h3 class="btitle" title="' + esc(b.title) + '">' + esc(b.title) + '</h3>' +
-                    '<div class="bmeta">' + pill +
-                        '<span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span>' +
-                        (infoTxt ? '<span class="binfo">' + infoTxt + '</span>' : '') +
-                    '</div>' +
+                '<h3 class="btitle" title="' + esc(b.title) + '">' + esc(b.title) + '</h3>' +
+                '<div class="bprod"><span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span></div>' +
+                '<div class="brow-facts">' +
+                    (b.bpm ? '<span class="binfo binfo-bpm">' + esc(b.bpm) + ' BPM</span>' : '') +
+                    (b.key ? '<span class="binfo binfo-key">' + esc(b.key) + '</span>' : '') +
+                    pill +
                 '</div>' +
-                '<div class="brow-tags">' + tags + '</div>' +
+                (tags ? '<div class="brow-tags">' + tags + '</div>' : '') +
+                (b.note ? '<p class="bnote" title="' + esc(b.note) + '">' + esc(b.note) + '</p>' : '') +
                 '<button class="buy-btn" data-buy="' + esc(b.id) + '"><span class="buy-label">Licenciar &middot; </span>' + brl(minPrice) + '</button>' +
             '</article>';
         }
