@@ -10,8 +10,16 @@
     var BEATS = [];
     var db = null;
 
-    // Pagina do produtor (/slug/): o <body> traz data-producer="slug" e so os beats dele aparecem
+    // Pagina do produtor: o <body> traz data-producer e so os beats dele aparecem.
+    //  - produtor.html?p=slug : data-producer="url", o slug vem do endereco (vale para qualquer produtor, sem pasta)
+    //  - /slug/ (pastas antigas): data-producer="slug"
+    var SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
     var PRODUCER_SLUG = document.body.getAttribute('data-producer');
+    if (PRODUCER_SLUG === 'url') {
+        var ps = '';
+        try { ps = new URLSearchParams(window.location.search).get('p') || ''; } catch (e) { /* sem URLSearchParams */ }
+        PRODUCER_SLUG = (ps.length <= 60 && SLUG_RE.test(ps)) ? ps : '?';   // '?' nunca e um slug valido: cai em "Produtor nao encontrado"
+    }
     var ROOT = document.body.getAttribute('data-root') || '';
     var PRODUCER = null;
     var SEARCH_ON = !!$('searchForm');      // a pagina do produtor nao tem busca
@@ -129,7 +137,7 @@
             note: r.note,
             cover: r.cover_url,
             audio: r.preview_url,
-            producer: { id: p.id || 'wavlab', name: p.name || 'Wav Lab', handle: p.handle, photo: p.photo_url },
+            producer: { id: p.id || 'wavlab', name: p.name || 'Wav Lab', handle: p.handle, photo: p.photo_url, slug: p.slug || null, bio: p.bio || '', active: p.active !== false },
             genre: { id: g.id || 'outro', name: g.name || 'Outro', color: safeColor(g.color), sort: g.sort == null ? 100 : g.sort }
         };
         // campos prontos para a busca
@@ -140,12 +148,32 @@
         return b;
     }
 
-    var COLS = 'id,title,bpm,musical_key,tags,note,cover_url,preview_url,created_at,producers(id,name,handle,photo_url),genres(id,name,color,sort)';
+    function beatCols(o) {
+        return 'id,title,bpm,musical_key,tags,note,cover_url,preview_url,created_at,' +
+            'producers(id,name,handle,photo_url' + (o.slug ? ',slug,bio,active' : '') + '),genres(id,name,color,sort)' +
+            (o.type ? ',type_artists' : '');
+    }
 
     function fetchBeats(cols) {
         var q = db.from('beats').select(cols).eq('published', true);
         if (PRODUCER) q = q.eq('producer_id', PRODUCER.id);
         return q.order('created_at', { ascending: false });
+    }
+
+    // Se o banco ainda nao recebeu a migracao 02 (type_artists) ou a 03 (slug, bio), tenta de novo sem essas colunas.
+    function fetchBeatsSafe(o) {
+        return fetchBeats(beatCols(o)).then(function (res) {
+            var m = (res.error && res.error.message) || '';
+            if (o.type && /type_artists/.test(m)) return fetchBeatsSafe({ slug: o.slug, type: false });
+            if (o.slug && /slug|bio|active/.test(m)) return fetchBeatsSafe({ slug: false, type: o.type });
+            return res;
+        });
+    }
+
+    // Link para a pagina do produtor. Sem slug (ou produtor inativo) nao ha link: nunca gera endereco quebrado.
+    function producerHref(p) {
+        if (!p || !p.slug || p.active === false || !SLUG_RE.test(p.slug)) return null;
+        return ROOT + 'produtor.html?p=' + encodeURIComponent(p.slug);
     }
 
     function loadBeats() {
@@ -157,12 +185,7 @@
         var ready = (PRODUCER_SLUG && !PRODUCER) ? loadProducer() : Promise.resolve(true);
         ready.then(function (found) {
             if (!found) return;
-            return fetchBeats(COLS + ',type_artists')
-                .then(function (res) {
-                    // se o banco ainda nao recebeu a migracao 02, a vitrine segue funcionando sem "type"
-                    if (res.error && /type_artists/.test(res.error.message || '')) return fetchBeats(COLS);
-                    return res;
-                })
+            return fetchBeatsSafe({ slug: true, type: true })
                 .then(function (res) {
                     if (res.error) throw res.error;
                     BEATS = (res.data || []).map(normalize);
@@ -201,7 +224,7 @@
 
     function renderProfile(p) {
         document.title = p.name + ' | Wav Lab';
-        $('pfBeatsLabel').textContent = 'Beats de ' + p.name;
+        $('pfBeatsLabel').textContent = 'Produções de ' + p.name;
 
         var ig = instagramUrl(p.handle), sp = spotifyUrl(p.spotify_url);
         var msg = (CFG.PRODUCER_WA_TEXT || 'Salve! Vim pela página de {produtor} no Wav Lab.').replace('{produtor}', function () { return p.name; });
@@ -361,8 +384,26 @@
     }
 
     // genero + produtores
+    function renderProducerBar() {
+        var bar = $('producerBar');
+        if (!bar) return;
+        var p = null;
+        if (filter.producer) {
+            for (var i = 0; i < BEATS.length; i++) if (BEATS[i].producer.id === filter.producer) { p = BEATS[i].producer; break; }
+        }
+        if (!p) { bar.hidden = true; bar.innerHTML = ''; return; }
+        var href = producerHref(p);
+        bar.innerHTML =
+            '<div class="pbar-photo">' + (p.photo ? '<img src="' + esc(p.photo) + '" alt="">' : esc(initials(p.name))) + '</div>' +
+            '<div class="pbar-text"><h3 class="pbar-name">' + esc(p.name) + '</h3>' +
+                (p.bio ? '<p class="pbar-bio">' + esc(p.bio) + '</p>' : '') + '</div>' +
+            (href ? '<a class="pbar-link" href="' + esc(href) + '">Ver perfil completo</a>' : '');
+        bar.hidden = false;
+    }
+
     function renderControls() {
         if (PRODUCER_SLUG) return;      // a pagina do produtor nao tem filtros
+        renderProducerBar();
         var genres = {}, producers = {}, gList = [], pList = [];
 
         BEATS.forEach(function (b) {
@@ -411,6 +452,10 @@
         if (b.key) info.push(esc(b.key));
         var infoTxt = info.join(' &middot; ');
         var avatar = (b.producer.photo ? '<img src="' + esc(b.producer.photo) + '" alt="" loading="lazy">' : esc(initials(b.producer.name)));
+        var pHref = producerHref(b.producer);
+        var prod = (pHref ? '<a class="bprod" href="' + esc(pHref) + '" title="Ver a página de ' + esc(b.producer.name) + '">' : '<div class="bprod">') +
+                '<span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span>' +
+            (pHref ? '</a>' : '</div>');
         var cover =
             '<div class="bcover" style="--g:' + b.genre.color + '">' + coverHTML(b) +
                 '<button class="play-btn" data-play="' + esc(b.id) + '" aria-label="Ouvir ' + esc(b.title) + '"><i class="fa-solid fa-play"></i></button>' +
@@ -427,7 +472,7 @@
             '<article class="brow' + (tags ? '' : ' no-tags') + (b.note ? '' : ' no-note') + '" data-card="' + esc(b.id) + '">' +
                 cover +
                 '<h3 class="btitle" title="' + esc(b.title) + '">' + esc(b.title) + '</h3>' +
-                '<div class="bprod"><span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span></div>' +
+                prod +
                 '<div class="brow-facts">' +
                     (b.bpm ? '<span class="binfo binfo-bpm">' + esc(b.bpm) + ' BPM</span>' : '') +
                     (b.key ? '<span class="binfo binfo-key">' + esc(b.key) + '</span>' : '') +
@@ -444,7 +489,7 @@
             cover +
             '<div class="bbody">' +
                 '<h3 class="btitle" title="' + esc(b.title) + '">' + esc(b.title) + '</h3>' +
-                '<div class="bprod"><span class="avatar">' + avatar + '</span><span class="producer-name">' + esc(b.producer.name) + '</span></div>' +
+                prod +
                 '<div class="bmeta">' + pill + (infoTxt ? '<span class="binfo">' + infoTxt + '</span>' : '') + '</div>' +
                 '<button class="buy-btn" data-buy="' + esc(b.id) + '">Licenciar &middot; ' + brl(minPrice) + '</button>' +
             '</div>' +
@@ -611,10 +656,12 @@
         selectedLicense = LICENSES[0];
         $('modalBeatTitle').textContent = currentBeat.title;
 
-        var sub = ['Prod. ' + currentBeat.producer.name];
-        if (currentBeat.bpm) sub.push(currentBeat.bpm + ' BPM');
-        if (currentBeat.key) sub.push(currentBeat.key);
-        $('modalSub').textContent = sub.join(' · ');
+        var mHref = producerHref(currentBeat.producer);
+        var credit = esc('Prod. ' + currentBeat.producer.name);
+        var sub = [mHref ? '<a href="' + esc(mHref) + '">' + credit + '</a>' : credit];
+        if (currentBeat.bpm) sub.push(esc(currentBeat.bpm) + ' BPM');
+        if (currentBeat.key) sub.push(esc(currentBeat.key));
+        $('modalSub').innerHTML = sub.join(' · ');
 
         $('modalNote').hidden = !currentBeat.note;
         $('modalNote').textContent = currentBeat.note ? '“' + currentBeat.note + '”' : '';
@@ -652,8 +699,10 @@
     $('copyLinkBtn').addEventListener('click', function () {
         if (!currentBeat) return;
         var u = new URL(window.location.href);
+        var keepP = (document.body.getAttribute('data-producer') === 'url') ? u.searchParams.get('p') : null;
         u.search = '';
         u.hash = '';
+        if (keepP) u.searchParams.set('p', keepP);
         u.searchParams.set('beat', currentBeat.id);
         copyText(u.toString(), function (okCopy) { toast(okCopy ? 'Link do beat copiado.' : 'Não foi possível copiar. Copie o endereço do navegador.'); });
     });

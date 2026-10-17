@@ -219,13 +219,13 @@
                     '<div class="thumb round">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '') + '<span>' + esc(initials(p.name)) + '</span></div>' +
                     '<div class="item-info">' +
                         '<div class="item-title">' + esc(p.name) + '</div>' +
-                        '<div class="item-sub"><span>' + esc(p.handle || 'sem @') + '</span><span>' + n + ' beat' + (n === 1 ? '' : 's') + '</span>' + (p.slug ? '<span>/' + esc(p.slug) + '</span>' : '') + '</div>' +
+                        '<div class="item-sub"><span>' + esc(p.handle || 'sem @') + '</span><span>' + n + ' beat' + (n === 1 ? '' : 's') + '</span>' + (p.slug ? '<span>' + esc(p.slug) + '</span>' : '') + '</div>' +
                     '</div>' +
                     '<label class="switch" title="Ativo"><input type="checkbox" data-toggle-producer="' + p.id + '"' + (p.active ? ' checked' : '') + '><span></span></label>' +
                 '</div>' +
                 '<div class="item-actions">' +
                     '<button class="btn small" data-act="edit-producer" data-id="' + p.id + '"><i class="fa-solid fa-pen"></i> Editar</button>' +
-                    (p.slug ? '<a class="btn small ghost" href="' + esc(p.slug) + '/" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Página</a>' : '') +
+                    (p.slug ? '<a class="btn small ghost" href="produtor.html?p=' + encodeURIComponent(p.slug) + '" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Página</a>' : '') +
                 '</div>' +
             '</div>';
         }).join('');
@@ -499,8 +499,8 @@
         var hint = $('pf_slug_hint');
         var problem = slugProblem(slug, editingProducer ? editingProducer.id : null);
         if (problem) { hint.className = 'hint warn'; hint.textContent = problem; }
-        else if (slug) { hint.className = 'hint ok'; hint.textContent = 'Link da página: ' + siteBase() + slug + '/'; }
-        else { hint.className = 'hint'; hint.textContent = 'Deixe vazio para o produtor ficar sem página. Cada endereço precisa de uma pasta no site (peça para criar e publicar).'; }
+        else if (slug) { hint.className = 'hint ok'; hint.textContent = 'Link da página: ' + siteBase() + 'produtor.html?p=' + slug + ' (funciona assim que o produtor for salvo, sem criar pasta).'; }
+        else { hint.className = 'hint'; hint.textContent = 'Deixe vazio para o produtor ficar sem página e sem link na vitrine.'; }
     }
 
     $('pf_slug').addEventListener('input', function () { slugTouched = true; updateSlugHint(); });
@@ -509,11 +509,6 @@
         $('pf_slug').value = slugify(this.value);
         updateSlugHint();
     });
-
-    async function pageExists(slug) {
-        try { var r = await fetch(slug + '/', { method: 'HEAD', cache: 'no-store' }); return r.ok; }
-        catch (e) { return true; }     // sem rede, nao alarma
-    }
 
     function openProducerForm(p) {
         editingProducer = p || null;
@@ -575,7 +570,6 @@
 
             var msg = 'Produtor salvo.';
             if (extrasSkipped) msg = 'Produtor salvo, mas endereço, bio e Spotify não foram gravados: rode o SQL migracao_03 no Supabase.';
-            else if (slug && !(await pageExists(slug))) msg = 'Produtor salvo, mas a pasta "' + slug + '" ainda não existe no site: peça para criar e publicar.';
             closeModals();
             toast(msg, msg.length > 20 ? 6000 : 2800);
             await loadAll();

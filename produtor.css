@@ -4,12 +4,23 @@ a.brand { text-decoration: none; color: inherit; }
 .brand-name { display: block; }
 
 .back-link {
-    display: inline-flex; align-items: center; gap: 7px;
-    font-size: 12px; font-weight: 600; color: var(--text-muted); text-decoration: none;
-    border: 1px solid var(--border-color); border-radius: 20px; padding: 7px 14px;
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px;
+    font-size: 13px; font-weight: 600; color: #d4d4d8; text-decoration: none;
+    border: 1px solid var(--border-color); border-radius: 22px; padding: 0 16px;
     transition: color 0.2s, border-color 0.2s;
 }
 .back-link:hover { color: #fff; border-color: var(--accent); }
+.back-link:focus-visible, .pf-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* link de volta no fim da lista */
+.pf-back {
+    width: 100%; max-width: 440px; min-height: 48px; margin: 28px auto 0;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border: 1px solid #3f3f46; border-radius: 12px; color: var(--text-main); text-decoration: none;
+    font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+.pf-back:hover { border-color: #71717a; background-color: rgba(255, 255, 255, 0.04); }
 
 .producer-page { max-width: 640px; }
 

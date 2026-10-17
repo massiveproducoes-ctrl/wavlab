@@ -28,7 +28,8 @@ Loja de beats (instrumentais) com vitrine pública e painel admin. Site estátic
 | `admin.js` | Lógica do admin |
 | `admin.css` | Estilos extras só do admin, por cima do `style.css` |
 | `licencas.html`, `licencas.js`, `licencas.css` | Página "Licenças": cards, regras gerais, crédito para copiar e FAQ. Tudo vem de `LICENSES`, `COMMON_TERMS`, `CREDIT_TEMPLATE` e `DELIVERY_DAYS` do `config.js` |
-| `alexandre/`, `drin/`, `faciebat/`, `felipe/` (cada uma com `index.html`) | Página de cada produtor, estilo link na bio, em `/<slug>/`. O `index.html` é igual em todas; só muda `data-producer="<slug>"` no `<body>` |
+| `produtor.html` | **Página de todos os produtores**, estilo link na bio, em `produtor.html?p=<slug>`. Um arquivo só: produtor novo com slug no admin funciona sem pasta e sem código |
+| `alexandre/`, `drin/`, `faciebat/`, `felipe/` (cada uma com `index.html`) | Endereços antigos `/<slug>/`, mantidos para os links já divulgados. Não crie pasta para produtor novo |
 | `produtor.css` | Estilos extras só da página do produtor |
 | `site.js` | Peças comuns da vitrine e da página de licenças: bloco "Quem somos" e links do rodapé (Instagram, WhatsApp) |
 | `config.js` | Configuração única, lida por vitrine e admin via `window.WAVLAB` |
@@ -49,18 +50,19 @@ Os scripts são carregados na ordem: `supabase-js` (CDN jsDelivr, versão fixa) 
 - Todo texto vindo do banco passa por `esc()` antes de ir para `innerHTML`. Mantenha assim.
 
 ### Link de beat, lista de espera e eventos (vitrine e página do produtor)
-- **`?beat=ID`:** `app.js` (`focusBeat`) desenha os lotes da rolagem infinita até o beat, rola até ele e o destaca. Ignora `?q=` quando há `?beat=`. O botão "Copiar link" do modal copia `<página atual>?beat=ID` (na página do produtor, o link aponta para a própria página dele). O modal de compra está copiado em `index.html` e em cada pasta de produtor: mexeu nele, atualize todos.
+- **`?beat=ID`:** `app.js` (`focusBeat`) desenha os lotes da rolagem infinita até o beat, rola até ele e o destaca. Ignora `?q=` quando há `?beat=`. O botão "Copiar link" do modal copia `<página atual>?beat=ID` (na página do produtor, o link aponta para a própria página dele e mantém o `?p=<slug>`). O modal de compra está copiado em `index.html`, em `produtor.html` e em cada pasta antiga de produtor: mexeu nele, atualize todos.
 - **"Em breve no Lab"** (só na vitrine): textos e itens em `COMING_SOON` (`config.js`). "Quero ser avisado" grava nome e WhatsApp (só dígitos, com 55) em `waitlist`. Tem campo-armadilha contra robô e lembra no `localStorage` (`wavlab_wait`).
 - **Eventos** (`events`): `play`, `license_click`, `checkout` e `search_empty` (com o termo). Sem IP, sem cookie, sem identificador de pessoa. Termos que parecem telefone, e-mail ou link nunca são gravados. Se for criar evento novo, não grave dado pessoal. A falha ao gravar nunca pode atrapalhar a vitrine.
 - Admin: abas "Lista de espera" (ver, copiar, abrir no WhatsApp, remover) e "Resumo" (últimos 30 dias, via função SQL `events_summary`). Sem a migração 04, só essas duas abas avisam; o resto do admin continua funcionando.
 - **Ao testar, nunca grave em produção:** intercepte todo POST/DELETE para o Supabase (é o banco real) e responda com dados simulados.
 
-### Página do produtor (`/<slug>/`)
-- É o mesmo `app.js` da vitrine em "modo produtor": o `<body>` traz `data-producer="<slug>"` e `data-root="../"`. Ele busca o produtor em `producers` pelo `slug` (só `active = true`), desenha foto, nome, bio e botões, e carrega só os beats dele (`producer_id`). Player, modal de compra, grade/lista e rolagem infinita são os mesmos da vitrine; busca e filtros não existem nessa página.
+### Página do produtor (`produtor.html?p=<slug>`)
+- É o mesmo `app.js` da vitrine em "modo produtor": o `<body>` traz `data-producer="url"` (slug lido de `?p=` e validado) ou, nas pastas antigas, `data-producer="<slug>"` com `data-root="../"`. Ele busca o produtor em `producers` pelo `slug` (só `active = true`), desenha foto, nome, bio e botões, e carrega só os beats dele (`producer_id`). Player, modal de compra, grade/lista e rolagem infinita são os mesmos da vitrine; busca e filtros não existem nessa página.
 - Botões: "Falar com o produtor" (WhatsApp da Wav Lab, mensagem em `PRODUCER_WA_TEXT`), Instagram (vem de `handle`) e Spotify (`spotify_url`). Botão sem dado não aparece.
-- GitHub Pages é estático: **cada slug precisa de uma pasta com o mesmo nome**. Para um produtor novo, copie uma pasta existente (ex.: `alexandre/`), renomeie e troque o `data-producer`. O slug no banco, o `data-producer` e o nome da pasta têm que ser idênticos. Slugs que não podem ser usados ficam em `RESERVED_SLUGS` (`config.js`).
-- O título da aba muda para o nome do produtor via JavaScript, mas a pré-visualização do link (`og:`) é genérica, porque o HTML é igual em todas as pastas.
-- Dentro de pastas, caminhos de arquivos usam `../`. Não use caminho começando com `/`: o site roda em `/wavlab/` no GitHub Pages.
+- **Produtor novo não exige pasta nem código:** cadastre no admin com o slug preenchido e `produtor.html?p=<slug>` já funciona (só `active = true`). As pastas antigas continuam abrindo, mas não são mais necessárias. Slugs que não podem ser usados ficam em `RESERVED_SLUGS` (`config.js`).
+- **Links para a página do produtor** (`producerHref` em `app.js`): nome do produtor em cada linha/card, "Prod. Nome" no modal e "Ver perfil completo" no mini cabeçalho que aparece quando a vitrine está filtrada por um produtor. Produtor sem slug (ou inativo) não gera link, só texto. A consulta lê `slug`, `bio` e `active` do produtor (migração 03) e tenta de novo sem eles se o banco ainda não os tem.
+- O título da aba muda para o nome do produtor via JavaScript, mas a pré-visualização do link (`og:`) é genérica, porque o HTML é o mesmo para todos os produtores.
+- Dentro das pastas antigas, caminhos de arquivos usam `../` (em `produtor.html`, que fica na raiz, não). Não use caminho começando com `/`: o site roda em `/wavlab/` no GitHub Pages.
 
 ### Admin (`admin.js`)
 - Login por e-mail e senha do Supabase Auth. As permissões reais ficam nas regras (RLS) do banco, não no JavaScript.
